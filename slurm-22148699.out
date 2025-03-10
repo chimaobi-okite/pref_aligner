@@ -1,0 +1,25 @@
+Found 10 chunk files. Aggregating results...
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_4.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_3.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_8.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_2.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_1.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_7.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_5.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_9.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_6.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_0.csv
+profile_0_answer_accuracy: 10.31%
+profile_1_answer_accuracy: 10.31%
+profile_2_answer_accuracy: 10.31%
+profile_3_answer_accuracy: 10.31%
+profile_4_answer_accuracy: 10.31%
+profile_5_answer_accuracy: 10.31%
+profile_6_answer_accuracy: 10.31%
+profile_7_answer_accuracy: 10.31%
+profile_8_answer_accuracy: 10.31%
+profile_9_answer_accuracy: 10.31%
+profile_10_answer_accuracy: 10.31%
+profile_11_answer_accuracy: 10.31%
+lenght of final df is 1319
+Aggregated results saved at: results/math_results/Mistral-7B-Instruct-v0.3_gsm8k_final.csv
