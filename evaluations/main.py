@@ -1,6 +1,7 @@
 import argparse
 
-from evaluations.math_task import gms8k_task
+from evaluations.math__gmsk8_task import gms8k_task
+from evaluations.math_task import run_math_task
 from evaluations.mcq_task import common_sense_qa_task, mmlu_task, truthful_qa_task
 
 
@@ -14,7 +15,8 @@ def main(chunk:int, chunk_size:int, model_path: str, data_path:str):
         mmlu_task(chunk, chunk_size, model_path,)
     if "openai/gsm8k" in data_path:
         gms8k_task(chunk, chunk_size, model_path,)
-
+    if "lighteval-MATH" in data_path:
+        run_math_task(chunk, chunk_size, model_path,data_path)
 
 
 if __name__ == "__main__":

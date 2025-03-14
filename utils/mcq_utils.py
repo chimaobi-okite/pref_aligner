@@ -38,3 +38,6 @@ def get_last_part(s: str) -> str:
     If '/' is not present, returns the original string.
     """
     return s.split("/")[-1]
+
+def calculate_math_accuracy(merged_df, is_same_column):
+    return merged_df[is_same_column].eq("yes").sum() / len(merged_df)

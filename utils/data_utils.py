@@ -1,5 +1,6 @@
 import pandas as pd
 from math import ceil
+from sklearn.model_selection import train_test_split
 from datasets import load_dataset
 SEED = 42
 
@@ -11,6 +12,9 @@ def load_data(path:str, split:str = None, sample_size: int = None):
         df = load_mmlu(path)
         if sample_size:
             df = df.sample(sample_size, random_state=SEED)
+        return df
+    if "lighteval-MATH" in path:
+        df = load_math(path, sample_size=sample_size)
         return df
     if split:
         ds = load_dataset(path, split)
@@ -24,8 +28,6 @@ def load_data(path:str, split:str = None, sample_size: int = None):
         df = df.sample(sample_size, random_state=SEED)
     return df
 
-
-
 def load_mmlu(path:str):
     df_list = [] 
     for sub in mmlu_subjects:
@@ -37,6 +39,18 @@ def load_mmlu(path:str):
 
     print("Total samples after filtering:", len(df))
     return df
+
+
+def load_math(path:str, sample_size):
+    data_size = 1000
+    ds = load_dataset(path)
+    test_df = ds["test"].to_pandas()
+    stratified_sample, _ = train_test_split(test_df, stratify=test_df['level'], 
+                                            train_size=data_size, random_state=42)
+    if sample_size:
+        stratified_sample = stratified_sample.sample(sample_size, random_state=SEED)
+    return stratified_sample
+
 
 def process_df(df, chunk, chunk_size):
     total_size = len(df)

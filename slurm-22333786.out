@@ -1,0 +1,8 @@
+Found 4 chunk files. Aggregating results...
+Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_truthful_qa_3.csv
+Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_truthful_qa_1.csv
+Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_truthful_qa_0.csv
+Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_truthful_qa_2.csv
+profile_0_answer_accuracy: 66.46%
+lenght of final df is 817
+Aggregated results saved at: results/mcq_results/Mistral-7B-Instruct-v0.3_truthful_qa_final_11.csv
