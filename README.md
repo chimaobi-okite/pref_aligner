@@ -21,7 +21,7 @@
 2. TruthfulQA
 3. CommonsenseQA
 
-Tasks (All task above have a timeline of Two Weeks. Person running the models should be done by next week so the analysis can follow):
+TODOs (All task above have a timeline of Two Weeks. Person running the models should be done by next week so the analysis can follow):
 1. Test Mixtral 8x7B, Mixtral 8x22B on all datasets above
 2. Test 8B, 13B, 70B on all datasets above
 3. Test Janus 7B on all the datasets above
@@ -29,3 +29,4 @@ Tasks (All task above have a timeline of Two Weeks. Person running the models sh
    * Do both quantitative (see models accuracies and plot results) and
    * qualitative analysis. That is probe individual failure cases and make conclusions.
    * Do inter model analysis - any instances that continously fail across all models?
+5. Go beyong multichoice questions - evaluate LLMs for generative tasks - (Think of datasets, set of code)
