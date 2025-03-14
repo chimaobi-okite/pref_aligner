@@ -1,0 +1,25 @@
+Found 10 chunk files. Aggregating results...
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_3.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_5.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_1.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_4.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_0.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_9.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_6.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_2.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_7.csv
+Deleted: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_8.csv
+profile_0_is_same_accuracy: 27.70%
+profile_1_is_same_accuracy: 30.70%
+profile_2_is_same_accuracy: 30.40%
+profile_3_is_same_accuracy: 32.50%
+profile_4_is_same_accuracy: 33.50%
+profile_5_is_same_accuracy: 28.90%
+profile_6_is_same_accuracy: 34.20%
+profile_7_is_same_accuracy: 26.70%
+profile_8_is_same_accuracy: 34.80%
+profile_9_is_same_accuracy: 31.80%
+profile_10_is_same_accuracy: 34.10%
+profile_11_is_same_accuracy: 26.80%
+lenght of final df is 1000
+Aggregated results saved at: results/math_results/Mistral-7B-Instruct-v0.3_lighteval-MATH_final.csv

@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 from typing import Dict
 
-from utils.mcq_utils import calculate_accuracy, get_last_part
+from utils.mcq_utils import calculate_accuracy, calculate_math_accuracy, get_last_part
 
 def aggregate_mcq_results(model_path: str, data_path: str, folder_path:str):
     """Aggregates all chunked CSV results, deletes chunk files, and calculates accuracy."""
@@ -14,7 +14,7 @@ def aggregate_mcq_results(model_path: str, data_path: str, folder_path:str):
     model_name = get_last_part(model_path)
     data_name = get_last_part(data_path)
     
-    chunk_files_pattern = f"{output_dir}/{model_name}_{data_name}_*.csv"
+    chunk_files_pattern = f"{output_dir}/{model_name}_{data_name}_[0-9]*.csv"
     chunk_files = glob.glob(chunk_files_pattern)
     
     if not chunk_files:
@@ -31,10 +31,16 @@ def aggregate_mcq_results(model_path: str, data_path: str, folder_path:str):
         os.remove(file)
         print(f"Deleted: {file}")
 
-    profile_columns = [col for col in merged_df.columns if col.startswith("profile_") and col.endswith("_answer")]
-    accuracy_results = {
-        f'{col}_accuracy': calculate_accuracy(merged_df, col) for col in profile_columns
-    }
+    if "MATH" in data_path:
+        profile_columns = [col for col in merged_df.columns if col.startswith("profile_") and col.endswith("_is_same")]
+        accuracy_results = {
+            f'{col}_accuracy': calculate_math_accuracy(merged_df, col) for col in profile_columns
+        }
+    else:
+        profile_columns = [col for col in merged_df.columns if col.startswith("profile_") and col.endswith("_answer")]
+        accuracy_results = {
+            f'{col}_accuracy': calculate_accuracy(merged_df, col) for col in profile_columns
+        }
 
     # Display the accuracy results
     for method, accuracy in accuracy_results.items():

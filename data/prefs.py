@@ -7,7 +7,7 @@ PREFS = {
     6: "I avoid learning materials that are text-heavy due to my dyslexia.",
     7: "I dislike reading long articles or research papers.",
     8: "I dislike learning through methods that don't involve multimodal and multimedia resources.",
-    9:"I learn best in a structured, guided environment with clear objectives and milestones rather than open-ended, self-directed learning.",
+    9: "I learn best in a structured, guided environment with clear objectives and milestones rather than open-ended, self-directed learning.",
     10: "I strongly dislike passive learning through lectures and presentations.",
-    11: "I prefer straight forward and concise responses"
+    11: "I prefer straightforward and concise responses/solutions."
 }
