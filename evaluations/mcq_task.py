@@ -1,4 +1,5 @@
 from math import ceil
+import random
 import string
 from typing import Dict, List
 import pandas as pd
@@ -15,6 +16,10 @@ from utils.utils import get_messages
 prefs = PREFS
 prefs_len = len(prefs)
 print(prefs_len)
+
+
+SEED = 42
+random.seed(SEED)
 
 def run_mcq_generation(question: str, options: List, generator):
     user_prompt = format_mcq_user_prompt(question, options)
@@ -68,8 +73,8 @@ def truthful_qa_task(chunk, chunk_size, model_path,
         desc="Processing Rows"):
         options = list(options['choices'])
         answer = options[0]
+        options = random.sample(options, len(options))
         references.append(options)
-        # options = random.sample(options, len(options))
 
 
         responses, predictions = run_mcq_generation(question, options, generator)
