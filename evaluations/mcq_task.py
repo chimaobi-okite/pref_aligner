@@ -1,4 +1,5 @@
 from math import ceil
+import os
 import random
 import string
 from typing import Dict, List
@@ -6,6 +7,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from data.prefs import PREFS
+from preferences.prefs import CQA_PREFS, MMLU_PREFS, TQA_PREFS
 from utils.data_utils import load_data, process_df
 from utils.mcq_extractor_utils import extract_answer_letter
 from utils.mcq_utils import calculate_accuracy, format_mcq_user_prompt, format_system_prompt, get_answer_letter_option, get_last_part
@@ -13,15 +15,18 @@ from utils.model_utils import load_model
 from utils.utils import get_messages
 
 
-prefs = PREFS
-prefs_len = len(prefs)
-print(prefs_len)
+
 
 
 SEED = 42
 random.seed(SEED)
 
-def run_mcq_generation(question: str, options: List, generator):
+def save_csv(df:pd.DataFrame, pref_type: str, data_name:str, model_name:str, chunk: int):
+    save_path = f"results/mcq_results/{pref_type}/{data_name}"
+    os.makedirs(save_path, exist_ok=True)
+    df.to_csv(f"{save_path}/{model_name}_{chunk}.csv", index=False)
+
+def run_mcq_generation(question: str, options: List, generator, prefs: Dict, prefs_len: int):
     user_prompt = format_mcq_user_prompt(question, options)
     responses = []
     predictions = []
@@ -37,7 +42,7 @@ def run_mcq_generation(question: str, options: List, generator):
         predictions.append(profile_ans)
     return responses, predictions
     
-def post_process_mcq_results(result_dict:Dict, model_path, data_path, chunk):
+def post_process_mcq_results(result_dict:Dict, model_path, data_path, chunk, prefs_len, pref_type):
     results_df = pd.DataFrame(result_dict)
     # Calculate accuracy for each profile
     accuracy_results = {
@@ -51,12 +56,17 @@ def post_process_mcq_results(result_dict:Dict, model_path, data_path, chunk):
         
     model_name =get_last_part(model_path)
     data_name = get_last_part(data_path)
-    results_df.to_csv(f"results/mcq_results/{model_name}_{data_name}_{chunk}.csv", index=False)
+    save_csv(df = results_df, pref_type = pref_type, data_name = data_name,
+             model_name = model_name, chunk = chunk)
+    # # results_df.to_csv(f"results/mcq_results/{model_name}_{data_name}_{chunk}.csv", index=False)
+    # results_df.to_csv(f"results/mcq_results/pref2_{model_name}_{data_name}_{chunk}.csv", index=False)
     return results_df
         
 
-def truthful_qa_task(chunk, chunk_size, model_path,
+def truthful_qa_task(chunk, chunk_size, model_path, pref_type,
                      data_path = "truthfulqa/truthful_qa"):
+    prefs = TQA_PREFS 
+    prefs_len = len(prefs)
     
     generator = load_model(model_path)
     df = load_data(data_path, "multiple_choice")
@@ -77,7 +87,7 @@ def truthful_qa_task(chunk, chunk_size, model_path,
         references.append(options)
 
 
-        responses, predictions = run_mcq_generation(question, options, generator)
+        responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
         
         for i, (res, profile_ans) in enumerate(zip(responses, predictions)):
             res_dict[f"profile_{i}_res"].append(res)
@@ -94,11 +104,14 @@ def truthful_qa_task(chunk, chunk_size, model_path,
                    **answer_dict, 
                    "gold_option": gold_options
                    }
-    results_df = post_process_mcq_results(result_dict, model_path, data_path, chunk)
+    results_df = post_process_mcq_results(result_dict, model_path, data_path, chunk, prefs_len, pref_type)
     
 
-def common_sense_qa_task(chunk, chunk_size, model_path,
+def common_sense_qa_task(chunk, chunk_size, model_path, pref_type,
                      data_path = "tau/commonsense_qa"):
+    
+    prefs = CQA_PREFS 
+    prefs_len = len(prefs)
 
     generator = load_model(model_path)
     df = load_data(data_path)
@@ -116,7 +129,7 @@ def common_sense_qa_task(chunk, chunk_size, model_path,
         options = list(options['text'])
         references.append(options)
 
-        responses, predictions = run_mcq_generation(question, options, generator)
+        responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
         
         for i, (res, profile_ans) in enumerate(zip(responses, predictions)):
             res_dict[f"profile_{i}_res"].append(res)
@@ -133,11 +146,15 @@ def common_sense_qa_task(chunk, chunk_size, model_path,
                    **answer_dict, 
                    "gold_option": gold_options
                    }
-    results_df = post_process_mcq_results(result_dict, model_path, data_path, chunk)
+    results_df = post_process_mcq_results(result_dict, model_path, data_path, chunk, prefs_len, pref_type)
     
-def mmlu_task(chunk, chunk_size, model_path,
+def mmlu_task(chunk, chunk_size, model_path, pref_type,
                      data_path = "cais/mmlu"):
 
+    prefs = MMLU_PREFS
+    prefs_len = len(prefs)
+    
+    
     generator = load_model(model_path)
     df = load_data(data_path)
     df = process_df(df, chunk, chunk_size)
@@ -154,7 +171,7 @@ def mmlu_task(chunk, chunk_size, model_path,
         answer = list(string.ascii_uppercase)[:4][answer]
         references.append(options)
 
-        responses, predictions = run_mcq_generation(question, options, generator)
+        responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
         
         for i, (res, profile_ans) in enumerate(zip(responses, predictions)):
             res_dict[f"profile_{i}_res"].append(res)
@@ -172,7 +189,7 @@ def mmlu_task(chunk, chunk_size, model_path,
                    **answer_dict, 
                    "gold_option": gold_options
                    }
-    results_df = post_process_mcq_results(result_dict, model_path, data_path, chunk)    
+    results_df = post_process_mcq_results(result_dict, model_path, data_path, chunk, prefs_len, pref_type)    
     
 
     
