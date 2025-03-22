@@ -1,0 +1,25 @@
+Found 10 chunk files. Aggregating results...
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_3.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_5.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_9.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_7.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_0.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_4.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_2.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_8.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_6.csv
+Deleted: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_1.csv
+profile_0_answer_accuracy: 58.62%
+profile_1_answer_accuracy: 54.91%
+profile_2_answer_accuracy: 56.77%
+profile_3_answer_accuracy: 59.50%
+profile_4_answer_accuracy: 61.79%
+profile_5_answer_accuracy: 56.11%
+profile_6_answer_accuracy: 58.52%
+profile_7_answer_accuracy: 59.72%
+profile_8_answer_accuracy: 60.70%
+profile_9_answer_accuracy: 61.68%
+profile_10_answer_accuracy: 51.75%
+profile_11_answer_accuracy: 59.50%
+lenght of final df is 916
+Aggregated results saved at: results/mcq_results/Llama-3.1-8B-Instruct_mmlu_final.csv

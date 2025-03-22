@@ -4,8 +4,11 @@ from sklearn.model_selection import train_test_split
 from datasets import load_dataset
 SEED = 42
 
-mmlu_subjects = ["college_physics", "college_mathematics","college_biology", "college_chemistry",
-                 "business_ethics", "conceptual_physics", "anatomy"]
+mmlu_subjects = ['professional_law', 'high_school_biology','professional_accounting', 'professional_medicine',
+       'high_school_mathematics', 'high_school_microeconomics','conceptual_physics', 'marketing',
+       'high_school_statistics','high_school_chemistry', 'college_medicine', 'high_school_physics',
+       'electrical_engineering', 'college_biology', 'anatomy', 'formal_logic',
+       'college_physics', 'college_mathematics','abstract_algebra', 'business_ethics', 'college_chemistry']
 
 def load_data(path:str, split:str = None, sample_size: int = None):
     if "mmlu" in path:
@@ -28,17 +31,13 @@ def load_data(path:str, split:str = None, sample_size: int = None):
         df = df.sample(sample_size, random_state=SEED)
     return df
 
+
 def load_mmlu(path:str):
-    df_list = [] 
-    for sub in mmlu_subjects:
-        ds = load_dataset(path, sub, split = "test")
-        df_sub = ds.to_pandas()
-        df_list.append(df_sub)
-
-    df = pd.concat(df_list, ignore_index=True)
-
-    print("Total samples after filtering:", len(df))
-    return df
+  ds = load_dataset(path, "all", split = "test")
+  df = ds.to_pandas()
+  df = df[df['subject'].isin(mmlu_subjects)]
+  print("Total samples after filtering:", len(df))
+  return df
 
 
 def load_math(path:str, sample_size):

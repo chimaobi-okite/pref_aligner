@@ -7,29 +7,30 @@
 module load python/3.11.5
 source venv/bin/activate
 
+# Set variables for the run
+FOLDER_PATH="mcq_results" # doesn't change for now
+PREF_TYPE="relevant"       # Options: "relevant" or "irrelevant"
+DATA_PATH="cais/mmlu" # data you're running here
+MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3" # model you're running here
 
 # run job
 python -m evaluations.merge_results \
-    --model_path=mistralai/Mistral-7B-Instruct-v0.3 \
-    --data_path=truthfulqa/truthful_qa \
-    --folder_path=mcq_results
+    --model_path=$MODEL_PATH \
+    --data_path=$DATA_PATH \
+    --folder_path=$FOLDER_PATH \
+    --pref_type=$PREF_TYPE
+    
+    
+    
+# Data = 
+#   -- tau/commonsense_qa
+#   -- cais/mmlu
+#   -- truthfulqa/truthful_qa
+#   -- more data will be added here
 
-# python -m evaluations.merge_results \
-#     --model_path=mistralai/Mistral-7B-Instruct-v0.3 \
-#     --data_path=tau/commonsense_qa \
-#     --folder_path=mcq_results
 
-# python -m evaluations.merge_results \
-#     --model_path=mistralai/Mistral-7B-Instruct-v0.3 \
-#     --data_path=cais/mmlu \
-#     --folder_path=mcq_results
-
-# python -m evaluations.merge_results \
-#     --model_path=mistralai/Mistral-7B-Instruct-v0.3 \
-#     --data_path=openai/gsm8k \
-#     --folder_path=math_results
-
-# python -m evaluations.merge_results \
-#     --model_path=mistralai/Mistral-7B-Instruct-v0.3 \
-#     --data_path=xDAN2099/lighteval-MATH \
-#     --folder_path=math_results
+# Data = 
+#   -- mistralai/Mistral-7B-Instruct-v0.3
+#   -- meta-llama/Llama-3.1-8B-Instruct
+#   
+#   -- update with any model you run
