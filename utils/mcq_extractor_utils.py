@@ -51,3 +51,42 @@ def extract_answer_letter(response, references):
         print(f"An invalid answer {predicted_answer} is generated")
         predicted_label = -1
     return predicted_label
+
+def extract_answer_letters_batch(responses, list_of_references):
+    """
+    Extract answer letters for a batch of responses and reference lists.
+    Runs everything in a single forward pass using batching.
+    
+    Args:
+        responses (List[str]): List of model-generated responses
+        list_of_references (List[List[str]]): List of options for each response
+        
+    Returns:
+        List[str|int]: List of predicted labels like ['A', 'C', -1]
+    """
+    prompts = [
+        create_extraction_instruction(response, references)
+        for response, references in zip(responses, list_of_references)
+    ]
+
+
+    inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
+
+    
+    outputs = model.generate(
+        inputs['input_ids'],
+        max_new_tokens=1,
+        pad_token_id=tokenizer.eos_token_id
+    )
+
+    decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+    predicted_labels = []
+    for prediction in decoded:
+        label = prediction.strip()[-1]  # get last character
+        if label in string.ascii_uppercase:
+            predicted_labels.append(label)
+        else:
+            print(f"Invalid answer generated: {prediction}")
+            predicted_labels.append(-1)
+
+    return predicted_labels

@@ -7,17 +7,19 @@ import pandas as pd
 from tqdm import tqdm
 
 from data.prefs import PREFS
-from preferences.prefs import CQA_PREFS, MMLU_PREFS, TQA_PREFS
+from enums import PrefType
+from preferences.prefs import CQA_PREFS, IRREVANT_PREFS, MMLU_PREFS, TQA_PREFS
 from utils.data_utils import load_data, process_df
-from utils.mcq_extractor_utils import extract_answer_letter
+from utils.janus_utils import apply_template_mistral_instruct, extract_after_inst
+from utils.mcq_extractor_utils import extract_answer_letter, extract_answer_letters_batch
 from utils.mcq_utils import calculate_accuracy, format_mcq_user_prompt, format_system_prompt, get_answer_letter_option, get_last_part
-from utils.model_utils import load_model
+from utils.model_utils import load_janus_model, load_model
 from utils.utils import get_messages
 
 
 
 
-
+irrevant_prefs = IRREVANT_PREFS
 SEED = 42
 random.seed(SEED)
 
@@ -41,6 +43,30 @@ def run_mcq_generation(question: str, options: List, generator, prefs: Dict, pre
         responses.append(res)
         predictions.append(profile_ans)
     return responses, predictions
+
+def run_janus_mcq_generation(question: str, options: List, janus, janus_tokenizer,
+                             prefs: Dict, prefs_len: int):
+    user_prompt = format_mcq_user_prompt(question, options)
+    responses = []
+    predictions = []
+    system_messages = []
+    for i in range(0,prefs_len+1):
+        if i == 0:
+            sys_message = format_system_prompt(None)
+        else:
+            sys_message = format_system_prompt(prefs[i])
+        system_messages.append(sys_message)
+            
+    input_strs = [apply_template_mistral_instruct(sys_message,user_prompt) for sys_message in system_messages]
+    inputs = janus_tokenizer(input_strs, return_tensors="pt", padding=True, truncation=True).to(janus.device)
+    output_ids = janus.generate(inputs['input_ids'], max_new_tokens=1024, temperature=0.0,do_sample=False,
+                                pad_token_id=janus_tokenizer.eos_token_id)
+    responses = janus_tokenizer.batch_decode(output_ids, skip_special_tokens=True)
+    responses = [extract_after_inst(res) for res in responses]
+    list_of_references = [options for i in range(0,prefs_len+1)]
+    predictions = extract_answer_letters_batch(responses, list_of_references)
+    return responses, predictions
+
     
 def post_process_mcq_results(result_dict:Dict, model_path, data_path, chunk, prefs_len, pref_type):
     results_df = pd.DataFrame(result_dict)
@@ -65,13 +91,26 @@ def post_process_mcq_results(result_dict:Dict, model_path, data_path, chunk, pre
 
 def truthful_qa_task(chunk, chunk_size, model_path, pref_type,
                      data_path = "truthfulqa/truthful_qa"):
-    prefs = TQA_PREFS 
+    
+    if pref_type == PrefType.IRRELEVANT.value:
+        prefs = irrevant_prefs
+    else: 
+        prefs = TQA_PREFS 
     prefs_len = len(prefs)
     
-    generator = load_model(model_path)
+    print(prefs_len)
+    
+    
+    is_janus = False
+    if "janus" in model_path:
+        model, tokenizer = load_janus_model(model_path=model_path)
+        is_janus = True
+    else:
+        generator = load_model(model_path)
     df = load_data(data_path, "multiple_choice")
     df = process_df(df, chunk, chunk_size)
-
+    
+    
     res_dict = {f"profile_{i}_res": [] for i in range(0, prefs_len + 1)}
     answer_dict =  {f"profile_{i}_answer": [] for i in range(0, prefs_len + 1)}
     gold_options = []
@@ -86,8 +125,12 @@ def truthful_qa_task(chunk, chunk_size, model_path, pref_type,
         options = random.sample(options, len(options))
         references.append(options)
 
-
-        responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
+        if is_janus:
+            responses, predictions = run_janus_mcq_generation(question, options, janus = model, 
+                                                              janus_tokenizer = tokenizer,prefs = prefs,
+                                                              prefs_len = prefs_len)
+        else:
+            responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
         
         for i, (res, profile_ans) in enumerate(zip(responses, predictions)):
             res_dict[f"profile_{i}_res"].append(res)
@@ -110,10 +153,20 @@ def truthful_qa_task(chunk, chunk_size, model_path, pref_type,
 def common_sense_qa_task(chunk, chunk_size, model_path, pref_type,
                      data_path = "tau/commonsense_qa"):
     
-    prefs = CQA_PREFS 
+    if pref_type == PrefType.IRRELEVANT.value:
+        prefs = irrevant_prefs
+    else: 
+        prefs = CQA_PREFS 
     prefs_len = len(prefs)
 
-    generator = load_model(model_path)
+    is_janus = False
+    if "janus" in model_path:
+        model, tokenizer = load_janus_model(model_path=model_path)
+        is_janus = True
+    else:
+        generator = load_model(model_path)
+        
+        
     df = load_data(data_path)
     df = process_df(df, chunk, chunk_size)
 
@@ -129,7 +182,12 @@ def common_sense_qa_task(chunk, chunk_size, model_path, pref_type,
         options = list(options['text'])
         references.append(options)
 
-        responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
+        if is_janus:
+            responses, predictions = run_janus_mcq_generation(question, options, janus = model, 
+                                                              janus_tokenizer = tokenizer,prefs = prefs,
+                                                              prefs_len = prefs_len)
+        else:
+            responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
         
         for i, (res, profile_ans) in enumerate(zip(responses, predictions)):
             res_dict[f"profile_{i}_res"].append(res)
@@ -151,11 +209,22 @@ def common_sense_qa_task(chunk, chunk_size, model_path, pref_type,
 def mmlu_task(chunk, chunk_size, model_path, pref_type,
                      data_path = "cais/mmlu"):
 
-    prefs = MMLU_PREFS
+    
+    if pref_type == PrefType.IRRELEVANT.value:
+        prefs = irrevant_prefs
+    else: 
+        prefs = MMLU_PREFS
     prefs_len = len(prefs)
     
     
-    generator = load_model(model_path)
+    is_janus = False
+    if "janus" in model_path:
+        model, tokenizer = load_janus_model(model_path=model_path)
+        is_janus = True
+    else:
+        generator = load_model(model_path)
+        
+        
     df = load_data(data_path)
     df = process_df(df, chunk, chunk_size)
 
@@ -171,7 +240,12 @@ def mmlu_task(chunk, chunk_size, model_path, pref_type,
         answer = list(string.ascii_uppercase)[:4][answer]
         references.append(options)
 
-        responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
+        if is_janus:
+            responses, predictions = run_janus_mcq_generation(question, options, janus = model, 
+                                                              janus_tokenizer = tokenizer,prefs = prefs,
+                                                              prefs_len = prefs_len)
+        else:
+            responses, predictions = run_mcq_generation(question, options, generator, prefs, prefs_len)
         
         for i, (res, profile_ans) in enumerate(zip(responses, predictions)):
             res_dict[f"profile_{i}_res"].append(res)

@@ -1,0 +1,26 @@
+Found 10 chunk files. Aggregating results...
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_9.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_0.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_7.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_6.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_1.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_8.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_2.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_4.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_5.csv
+Deleted: results/mcq_results/relevant/commonsense_qa/janus-7b_3.csv
+profile_0_answer_accuracy: 51.52%
+profile_1_answer_accuracy: 68.47%
+profile_2_answer_accuracy: 67.16%
+profile_3_answer_accuracy: 67.98%
+profile_4_answer_accuracy: 62.82%
+profile_5_answer_accuracy: 72.32%
+profile_6_answer_accuracy: 62.49%
+profile_7_answer_accuracy: 66.83%
+profile_8_answer_accuracy: 64.54%
+profile_9_answer_accuracy: 59.71%
+profile_10_answer_accuracy: 59.54%
+profile_11_answer_accuracy: 65.68%
+profile_12_answer_accuracy: 68.30%
+lenght of final df is 1221
+Aggregated results saved at: results/mcq_results/relevant/commonsense_qa/janus-7b_final.csv
