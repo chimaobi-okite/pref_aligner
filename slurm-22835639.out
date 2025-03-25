@@ -1,0 +1,28 @@
+Found 10 chunk files. Aggregating results...
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_1.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_7.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_9.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_6.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_0.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_8.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_3.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_2.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_5.csv
+Deleted: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_4.csv
+profile_0_answer_accuracy: 53.24%
+profile_1_answer_accuracy: 47.37%
+profile_2_answer_accuracy: 45.53%
+profile_3_answer_accuracy: 37.45%
+profile_4_answer_accuracy: 40.15%
+profile_5_answer_accuracy: 35.13%
+profile_6_answer_accuracy: 39.53%
+profile_7_answer_accuracy: 45.78%
+profile_8_answer_accuracy: 42.59%
+profile_9_answer_accuracy: 48.10%
+profile_10_answer_accuracy: 31.21%
+profile_11_answer_accuracy: 38.43%
+profile_12_answer_accuracy: 37.94%
+profile_13_answer_accuracy: 35.37%
+profile_14_answer_accuracy: 28.52%
+lenght of final df is 817
+Aggregated results saved at: results/mcq_results/relevant/truthful_qa/Mistral-7B-Instruct-v0.3_final.csv

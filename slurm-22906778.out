@@ -1,0 +1,45 @@
+Found 30 chunk files. Aggregating results...
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_19.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_10.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_14.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_27.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_7.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_11.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_15.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_21.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_18.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_25.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_9.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_5.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_22.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_24.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_23.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_29.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_8.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_13.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_4.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_0.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_28.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_3.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_20.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_16.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_1.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_17.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_12.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_6.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_2.csv
+Deleted: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_26.csv
+profile_0_answer_accuracy: 60.21%
+profile_1_answer_accuracy: 58.82%
+profile_2_answer_accuracy: 56.09%
+profile_3_answer_accuracy: 56.27%
+profile_4_answer_accuracy: 56.65%
+profile_5_answer_accuracy: 56.15%
+profile_6_answer_accuracy: 58.05%
+profile_7_answer_accuracy: 59.67%
+profile_8_answer_accuracy: 59.30%
+profile_9_answer_accuracy: 57.58%
+profile_10_answer_accuracy: 59.54%
+profile_11_answer_accuracy: 56.75%
+lenght of final df is 5170
+Aggregated results saved at: results/mcq_results/relevant/mmlu/Llama-3.1-8B-Instruct_final.csv

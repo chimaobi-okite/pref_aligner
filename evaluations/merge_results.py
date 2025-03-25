@@ -24,7 +24,7 @@ def aggregate_mcq_results(model_path: str, data_path: str, folder_path:str, pref
     chunk_files = []
     for f in all_files:
         match = re.search(rf"{re.escape(model_name)}_(\d+)\.csv", f)
-        if match and 0 <= int(match.group(1)) <= 20:
+        if match and 0 <= int(match.group(1)) <= 50:
             chunk_files.append(f)
     # # Filter for chunks between 0 and 20
     # chunk_files = [
