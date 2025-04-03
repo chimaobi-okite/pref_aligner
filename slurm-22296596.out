@@ -1,9 +1,0 @@
-Found 5 chunk files. Aggregating results...
-Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_mmlu_2.csv
-Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_mmlu_1.csv
-Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_mmlu_0.csv
-Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_mmlu_4.csv
-Deleted: results/mcq_results/Mistral-7B-Instruct-v0.3_mmlu_3.csv
-profile_0_answer_accuracy: 42.69%
-lenght of final df is 916
-Aggregated results saved at: results/mcq_results/Mistral-7B-Instruct-v0.3_mmlu_final_11.csv
