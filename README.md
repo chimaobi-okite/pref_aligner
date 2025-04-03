@@ -21,12 +21,10 @@
 2. TruthfulQA
 3. CommonsenseQA
 
-TODOs (All task above have a timeline of Two Weeks. Person running the models should be done by next week so the analysis can follow):
-1. Test Mixtral 8x7B, Mixtral 8x22B on all datasets above
-2. Test 8B, 13B, 70B on all datasets above
-3. Test Janus 7B on all the datasets above
-4. Analyse Results -
-   * Do both quantitative (see models accuracies and plot results) and
-   * qualitative analysis. That is probe individual failure cases and make conclusions.
-   * Do inter model analysis - any instances that continously fail across all models?
-5. Go beyong multichoice questions - evaluate LLMs for generative tasks - (Think of datasets, set of code)
+TODOs
+1. Run mistralai/Mistral-7B-Instruct-v0.3, relevant cot on all datasets (Kiran)
+2. Run mistralai/Mistral-7B-Instruct-v0.3, relevant icl on mmlu (Kiran)
+2. Run meta-llama/Llama-3.1-8B-Instruct, relevant cot on all datasets (Daniel)
+3. Run kaist-ai/janus-7b, relevant, both cot and icl on all datasets (Daniel)
+4. Run mistralai/Mixtral-8x7B-Instruct-v0.1, relevant, direct, cot and icl on all datasets (Chima)
+5. Run meta-llama/Llama-3.3-70B-Instruct, relevant, direct, cot and icl on all datasets (Chima)

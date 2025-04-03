@@ -8,17 +8,20 @@ module load python/3.11.5
 source venv/bin/activate
 
 # Set variables for the run
+PROMPT_METHOD="icl"
 FOLDER_PATH="mcq_results" # doesn't change for now
-PREF_TYPE="relevant"       # Options: "relevant" or "irrelevant"
-DATA_PATH="cais/mmlu" # data you're running here
-MODEL_PATH="kaist-ai/janus-7b" # model you're running here
+PREF_TYPE="relevant"    # Options: "relevant" or "irrelevant"
+DATA_PATH="tau/commonsense_qa" # data you're running here
+MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3" # model you're running here
 
 # run job
 python -m evaluations.merge_results \
     --model_path=$MODEL_PATH \
     --data_path=$DATA_PATH \
     --folder_path=$FOLDER_PATH \
-    --pref_type=$PREF_TYPE
+    --pref_type=$PREF_TYPE \
+    --prompt_method=$PROMPT_METHOD
+
     
     
     
@@ -33,4 +36,6 @@ python -m evaluations.merge_results \
 #   -- mistralai/Mistral-7B-Instruct-v0.3
 #   -- meta-llama/Llama-3.1-8B-Instruct
 #   -- kaist-ai/janus-7b
+#   -- meta-llama/Llama-3.3-70B-Instruct
+#   -- mistralai/Mixtral-8x7B-Instruct-v0.1
 #   -- update with any model you run

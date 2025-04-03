@@ -10,12 +10,29 @@ def format_mcq_user_prompt(question, choices):
     return user_prompt
 
 
-def format_system_prompt(profile = None):
+# def format_system_prompt(profile = None):
+#     sys_prompt = f"""You are an AI assistant that provides factually accurate, unbiased, and helpful responses.\n"""
+#     if profile: 
+#         sys_prompt += f"""Here is the user preference: {profile}.
+#         Tailor your answer to thier perference.\n"""
+#     # sys_prompt += "Always remain truthful and unbiased."
+#     return sys_prompt
+
+def format_system_prompt(profile = None, examples = None, prompt_method=None):
     sys_prompt = f"""You are an AI assistant that provides factually accurate, unbiased, and helpful responses.\n"""
     if profile: 
         sys_prompt += f"""Here is the user preference: {profile}.
         Tailor your answer to thier perference.\n"""
-    # sys_prompt += "Always remain truthful and unbiased."
+    if examples and prompt_method == 'icl':
+        sys_prompt += "\n\nHere are some examples:\n"
+        sys_prompt += examples.strip()  # Remove excess spacing if any
+        
+    if prompt_method == "cot":
+        sys_prompt += """
+        Here are some instructions:
+        - Think step-by-step before answering.
+        - Your response should be correct as well as align to the provided user preference when applicable
+        """
     return sys_prompt
 
 
