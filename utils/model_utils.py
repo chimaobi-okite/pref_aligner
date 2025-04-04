@@ -127,9 +127,21 @@ def load_model(model_path: str, batch_size: int = 16):
 
     tokenizer = AutoTokenizer.from_pretrained(model_path, token=hf_token)
 
-    eos_token_id = model.config.eos_token_id or tokenizer.eos_token_id
-    model.config.pad_token_id = eos_token_id
-    tokenizer.pad_token_id = eos_token_id
+    # eos_token_id = model.config.eos_token_id or tokenizer.eos_token_id
+    # model.config.pad_token_id = eos_token_id
+    # tokenizer.pad_token_id = eos_token_id
+    
+    if tokenizer.pad_token is None:
+        tokenizer.add_special_tokens({'pad_token': tokenizer.eos_token})
+
+    # eos_token_id = model.config.eos_token_id or tokenizer.eos_token_id
+
+    # model.config.pad_token_id = eos_token_id
+    # tokenizer.pad_token_id = eos_token_id
+    
+    # Set pad_token_id and model config
+    pad_token_id = tokenizer.pad_token_id  # this is now a valid int
+    model.config.pad_token_id = pad_token_id
 
     return pipeline(
         "text-generation",
