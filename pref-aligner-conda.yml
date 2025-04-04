@@ -1,0 +1,7 @@
+name: pref_aligner
+channels:
+- nvidia
+- conda-forge
+dependencies:
+- python==3.11.5
+- pip

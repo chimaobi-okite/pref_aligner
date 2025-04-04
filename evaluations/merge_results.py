@@ -30,7 +30,8 @@ def aggregate_mcq_results(model_path: str, data_path: str, folder_path:str, pref
     
     chunk_files_pattern = f"{output_dir}/{model_name}_*.csv"
     all_files = glob.glob(chunk_files_pattern)
-    
+
+    print(f"Searching {chunk_files_pattern}")
 
     chunk_files = []
     for f in all_files:
