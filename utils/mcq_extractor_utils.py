@@ -94,7 +94,8 @@ def mcq_gpt_extractor(response, reference):
 
     response = client.chat.completions.create(
         #model="gpt-4o-mini-2024-07-18", # "gpt-4-32k", # model = "deployment_name".
-        model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        # model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
         messages=messages,
         temperature=0,
         seed=42,
