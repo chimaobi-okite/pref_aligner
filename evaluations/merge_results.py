@@ -7,6 +7,7 @@ import pandas as pd
 from typing import Dict
 
 from enums import PrefType, PromptMethod
+from utils.data_utils import load_data
 from utils.mcq_utils import calculate_accuracy, calculate_math_accuracy, get_last_part
 
 
@@ -47,6 +48,14 @@ def aggregate_mcq_results(model_path: str, data_path: str, folder_path:str, pref
     
     # Merge all CSV files
     merged_df = pd.concat((pd.read_csv(f) for f in chunk_files), ignore_index=True)
+    
+    if data_path == "truthfulqa/truthful_qa":
+        data = load_data(data_path, "multiple_choice")
+    else:
+        data = load_data(data_path)
+    if len(merged_df) != len(data):
+        raise ValueError(f"Length mismatch: merged_df has {len(merged_df)} rows but data has {len(data)} entries.")
+
 
     # Delete chunk files
     for file in chunk_files:
