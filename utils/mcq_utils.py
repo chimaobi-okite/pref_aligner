@@ -50,6 +50,18 @@ def get_answer_letter_option(answer, choices):
     letter = options[answer_index]
     return letter
 
+
+def get_answer_text(answer_key, choices):
+    """
+    Given an answer key and list of options, extracts the answer text
+    """
+    ref_len = len(choices)
+    options = list(string.ascii_uppercase)[:ref_len]
+    answer_index = options.index(answer_key)
+    answer = choices[answer_index]
+    return answer
+
+
 def get_last_part(s: str) -> str:
     """Splits a string by '/' and returns the last part. 
     If '/' is not present, returns the original string.
