@@ -2,6 +2,12 @@ import pandas as pd
 from math import ceil
 from sklearn.model_selection import train_test_split
 from datasets import load_dataset
+import random
+import string
+from tqdm import tqdm
+
+from preferences.prefs import CQA_PREFS, MMLU_PREFS, TQA_PREFS
+from utils.mcq_utils import get_answer_letter_option, get_answer_text
 SEED = 42
 
 mmlu_subjects = ['professional_law', 'high_school_biology','professional_accounting', 'professional_medicine',
@@ -51,6 +57,13 @@ def load_math(path:str, sample_size):
     return stratified_sample
 
 
+def load_full_data(path = "data/robuset.csv", sample_size = None):
+    df = pd.read_csv(path)
+    if sample_size:
+        sample = df.sample(sample_size, random_state=SEED)
+        return sample
+    return df
+
 def process_df(df, chunk, chunk_size):
     total_size = len(df)
     per_chunk_data_size = ceil(total_size / chunk_size)
@@ -65,3 +78,58 @@ def process_df(df, chunk, chunk_size):
     
     df = df[start_index:end_index]
     return df
+
+def aggregate_datasets(tqa_df: pd.DataFrame,
+                       cqa_df: pd.DataFrame,
+                       mmlu_df: pd.DataFrame) -> pd.DataFrame:
+    
+    "Function aggregates dataframes to create our full datasets"
+    data = {
+        "id": [], "question": [], "options": [],
+        "gold_option": [], "gold_answer": [], "category": [],
+        "source": [], "preference": []
+    }
+
+    def _get_pref(prefs, idx):
+        return prefs[(idx % len(prefs)) + 1]
+
+    def append_row(idx, q, opts, gold_opt, gold_ans, cat, id_, src, pref):
+        data["question"].append(q)
+        data["options"].append(opts)
+        data["gold_option"].append(gold_opt)
+        data["gold_answer"].append(gold_ans)
+        data["category"].append(cat)
+        data["id"].append(id_)
+        data["source"].append(src)
+        data["preference"].append(pref)
+
+    # Process TruthfulQA
+    for i, (q, opt_obj) in tqdm(
+        enumerate(zip(tqa_df["question"], tqa_df["mc1_targets"])),
+        total=len(tqa_df), desc="Processing TruthfulQA"
+    ):
+        opts = list(opt_obj['choices'])
+        answer = opts[0]
+        shuffled_opts = random.sample(opts, len(opts))
+        gold_opt = get_answer_letter_option(answer, shuffled_opts)
+        append_row(i, q, shuffled_opts, gold_opt, answer, None, None, "truthfulqa/truthful_qa", _get_pref(TQA_PREFS, i))
+
+    # Process CommonsenseQA
+    for i, (id_, q, opts, key) in tqdm(
+        enumerate(zip(cqa_df["id"], cqa_df["question"], cqa_df["choices"], cqa_df["answerKey"])),
+        total=len(cqa_df), desc="Processing CommonsenseQA"
+    ):
+        opt_texts = list(opts['text'])
+        gold_ans = get_answer_text(key, opt_texts)
+        append_row(i, q, opt_texts, key, gold_ans, None, id_, "tau/commonsense_qa", _get_pref(CQA_PREFS, i))
+
+    # Process MMLU
+    for i, (q, opts, ans_idx, cat) in tqdm(
+        enumerate(zip(mmlu_df["question"], mmlu_df["choices"], mmlu_df["answer"], mmlu_df["subject"])),
+        total=len(mmlu_df), desc="Processing MMLU"
+    ):
+        answer_key = string.ascii_uppercase[ans_idx]
+        answer = opts[ans_idx]
+        append_row(i, q, opts, answer_key, answer, cat, None, "cais/mmlu", _get_pref(MMLU_PREFS, i))
+
+    return pd.DataFrame(data)

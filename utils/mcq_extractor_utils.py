@@ -94,7 +94,7 @@ def mcq_gpt_extractor(response, reference):
 
     response = client.chat.completions.create(
         #model="gpt-4o-mini-2024-07-18", # "gpt-4-32k", # model = "deployment_name".
-        # model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+        #model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
         model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
         messages=messages,
         temperature=0,
@@ -143,18 +143,19 @@ def extract_answer_letters_batch(responses, list_of_references):
 
     decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
     predicted_labels = []
-    invalid_counts = 0
+    invalids = []
     for i, prediction in enumerate(decoded):
         label = prediction.strip()[-1]  # get last character
         if label in string.ascii_uppercase:
             predicted_labels.append(label)
+            invalids.append(0)
         else:
             print(f"Invalid answer generated: {prediction}")
-            invalid_counts += 1
+            invalids.append(1)
             gpt_label = mcq_gpt_extractor(responses[i], extract_references(list_of_references[i]))
             print(gpt_label)
             final_label = extract_letter_from_json(gpt_label)
             print(final_label)
             predicted_labels.append(final_label)
 
-    return predicted_labels, invalid_counts
+    return predicted_labels, invalids

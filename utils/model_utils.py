@@ -93,7 +93,7 @@ huge_models = {
     "meta-llama/Llama-3.3-70B-Instruct"
 }
 
-def load_model(model_path: str, batch_size: int = 16):
+def load_model(model_path: str, batch_size: int = 32):
     """
     Load a text generation model with optional 4-bit quantization for large models.
 
