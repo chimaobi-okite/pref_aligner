@@ -7,7 +7,7 @@
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=2
 #SBATCH --mem-per-gpu=32GB
-#SBATCH --account=mihalcea98 # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
+#SBATCH --account=mihalcea_owned1 # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
 
 # Load modules
 module load python/3.11.5 cuda
@@ -17,7 +17,7 @@ source venv/bin/activate  # Ensure the virtual env path is correct
 nvidia-smi
 
 # Set variables for the run
-PROMPT_METHOD="icl" # Options: "icl" or "cot" or "direct"
+PROMPT_METHOD="cot" # Options: "icl" or "cot" or "direct"
 PREF_TYPE="relevant"       # Options: "relevant" or "irrelevant"
 # MODEL_PATH="kaist-ai/janus-7b"
 MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1" # model you're running here
