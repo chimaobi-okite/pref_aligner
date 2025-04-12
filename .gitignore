@@ -3,3 +3,5 @@ run_ignore.sh
 .env
 slurm-*.out
 **/__pycache__/
+**.pyc
+**.DS_Store
