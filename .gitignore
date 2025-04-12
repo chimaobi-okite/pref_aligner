@@ -3,6 +3,11 @@ run_ignore.sh
 .env
 slurm-*.out
 **/__pycache__/
+<<<<<<< HEAD
 run_full_mcq_2.sh
 full_main_2.py
 full_mcq_task_2.py
+=======
+**.pyc
+**.DS_Store
+>>>>>>> e661e30f56c99e8d67a66dcfaa5258793673eb76
