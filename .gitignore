@@ -3,3 +3,6 @@ run_ignore.sh
 .env
 slurm-*.out
 **/__pycache__/
+run_full_mcq_2.sh
+full_main_2.py
+full_mcq_task_2.py
