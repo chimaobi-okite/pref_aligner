@@ -35,7 +35,11 @@ def save_csv(df:pd.DataFrame, pref_type: str, model_name:str, prompt_method: str
 def run_mcq_generation(user_prompts, batch_options_list, sys_messages, generator):
     batched_inputs = [get_messages(sys_message=sys_message, user_message=user_prompt) 
                     for (sys_message, user_prompt) in zip(sys_messages, user_prompts)]
+<<<<<<< HEAD
     results = generator(batched_inputs, max_new_tokens=500,)
+=======
+    results = generator(batched_inputs, max_new_tokens=500)
+>>>>>>> 68864568f6f010486372b2e007ca5bec8e14a552
     input_len = len(batched_inputs)
     responses = [results[i][0]["generated_text"][2]['content'] for i in range(0, input_len)]
     list_of_references = batch_options_list[:input_len]
@@ -115,9 +119,14 @@ def full_qa_task(model_path, pref_type, prompt_method,):
         model, tokenizer = load_janus_model(model_path=model_path)
         is_janus = True
     else:
+<<<<<<< HEAD
         generator = load_model(model_path)
     df = load_full_data()
     # df = df[:100]
+=======
+        generator = load_model(model_path, batch_size=BATCH_SIZE)
+    df = load_full_data()
+>>>>>>> 68864568f6f010486372b2e007ca5bec8e14a552
     # df = process_df(df, chunk, chunk_size)
     
     print(f"Length of dataframe is {len(df)}")
@@ -145,6 +154,7 @@ def full_qa_task(model_path, pref_type, prompt_method,):
         
         batch_examples = get_batch_examples(batch_sources)
     
+<<<<<<< HEAD
         user_prompts = [format_mcq_user_prompt(question, ast.literal_eval(options)) 
                             for (question, options) in zip(batch_questions, batch_options_list)]
         print(user_prompts[0])
@@ -155,6 +165,17 @@ def full_qa_task(model_path, pref_type, prompt_method,):
                 sys_messages = [format_system_prompt(pref, examples= examples, prompt_method=prompt_method)
                                 for pref, examples in zip(batch_preferences, batch_examples)]
                 
+=======
+        user_prompts = [format_mcq_user_prompt(question, options) 
+                            for (question, options) in zip(batch_questions, batch_options_list)]
+        for i in range(0,2):
+            if i == 0:
+                sys_messages = [format_system_prompt(None) for i in range(len(batch_preferences) + 1)]
+            else:
+                sys_messages = [format_system_prompt(pref, examples= examples, prompt_method=prompt_method)
+                                for pref, examples in zip(batch_preferences, batch_examples)]
+            # print(sys_messages)    
+>>>>>>> 68864568f6f010486372b2e007ca5bec8e14a552
             if is_janus:
                 responses, predictions, invalids = run_janus_mcq_generation(user_prompts, 
                                                                     batch_options_list, 
@@ -177,7 +198,10 @@ def full_qa_task(model_path, pref_type, prompt_method,):
                 
     result_dict = {"question": questions,
                    "options": options_list,
+<<<<<<< HEAD
                    "source": sources,
+=======
+>>>>>>> 68864568f6f010486372b2e007ca5bec8e14a552
                    "no_pref_res": no_pref_res,
                    "no_pref_ans": no_pref_ans,
                    "pref_res": pref_res,
