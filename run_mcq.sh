@@ -3,12 +3,12 @@
 #SBATCH --mail-user=cokite@umich.edu
 #SBATCH --mail-type=ALL
 #SBATCH --partition=spgpu
-#SBATCH --time=30:10:00
+#SBATCH --time=3:10:00
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=2
 #SBATCH --mem-per-gpu=32GB
-#SBATCH --account=mihalcea_owned1 # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
-#SBATCH --array=0-29%6  # Run four parallel jobs (chunks 0, 1, 2, 3)
+#SBATCH --account=cse692w25_class # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
+# SBATCH --array=0-29%6  # Run four parallel jobs (chunks 0, 1, 2, 3)
 
 # Load modules
 module load python/3.11.5 cuda
@@ -18,14 +18,13 @@ source venv/bin/activate  # Ensure the virtual env path is correct
 nvidia-smi
 
 # Set variables for the run
-PROMPT_METHOD="icl" # Options: "icl" or "cot" or "direct"
+PROMPT_METHOD="direct" # Options: "icl" or "cot" or "direct"
 PREF_TYPE="relevant"       # Options: "relevant" or "irrelevant"
-DATA_PATH="cais/mmlu" # data you're running here
-# MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1" # model you're running here
-MODEL_PATH="kaist-ai/janus-7b"
+DATA_PATH="truthfulqa/truthful_qa" # data you're running here
+MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3" # model you're running here
 # MODEL_PATH="meta-llama/Llama-3.1-8B-Instruct"
-CHUNK_SIZE=30 # your chunk size
-
+CHUNK_SIZE=18 # your chunk size
+SLURM_ARRAY_TASK_ID=0
 # Run job for the assigned chunk
 CUDA_LAUNCH_BLOCKING=1 
 python -m evaluations.main \

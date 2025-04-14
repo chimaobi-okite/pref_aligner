@@ -122,7 +122,6 @@ def load_model(model_path: str, batch_size: int = 32):
         model_path,
         device_map="auto",
         token=hf_token,
-        # force_download=True,
         **model_kwargs
     )
 

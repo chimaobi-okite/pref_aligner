@@ -57,10 +57,12 @@ def load_math(path:str, sample_size):
     return stratified_sample
 
 
-def load_full_data(path = "data/robuset.csv", sample_size = None):
+def load_full_data(path = "data/robuset_main.csv", sample_size = None):
     df = pd.read_csv(path)
+    # df = df[df['source'] == "cais/mmlu"]
+    # # df = df[df['source'] == "truthfulqa/truthful_qa"]
     if sample_size:
-        sample = df.sample(sample_size, random_state=SEED)
+        sample = df[:sample_size]
         return sample
     return df
 
