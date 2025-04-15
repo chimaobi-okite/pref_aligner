@@ -109,7 +109,7 @@ def get_robustness(df):
 def full_qa_task(model_path, pref_type, prompt_method,):
     
     BATCH_SIZE = 32
-    
+    print(model_path)
     is_janus = False
     if "janus" in model_path:
         model, tokenizer = load_janus_model(model_path=model_path)

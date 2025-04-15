@@ -8,16 +8,11 @@ module load python/3.11.5
 source venv/bin/activate
 
 # Set variables for the run
-PROMPT_METHOD="direct"
+PROMPT_METHOD="cot"
 FOLDER_PATH="mcq_results" # doesn't change for now
 PREF_TYPE="relevant"    # Options: "relevant" or "irrelevant"
-<<<<<<< HEAD
-DATA_PATH="cais/mmlu" # data you're running here
-MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1" # model you're running here
-=======
 DATA_PATH="full" # data you're running here
-MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3" # model you're running here
->>>>>>> 68864568f6f010486372b2e007ca5bec8e14a552
+MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1" # model you're running here
 
 # run job
 python -m evaluations.merge_results \

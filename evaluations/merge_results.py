@@ -14,7 +14,7 @@ from utils.mcq_utils import calculate_accuracy, calculate_math_accuracy, get_las
 def get_full_agg_robustness(df):
     df = df.copy()
     df = df[df['no_pref_ans'] == df['gold_option']]
-    accuracy_result = calculate_accuracy(df, "no_pref_ans")
+    accuracy_result = calculate_accuracy(df, "pref_ans")
     return accuracy_result  # Skips profile_0
 
 def get_agg_robustness(df, pref_columns):
@@ -120,8 +120,13 @@ def aggregate_full_mcq_results(model_path: str, folder_path:str, pref_type: str,
     print(f"Searching {chunk_files_pattern}")
 
     chunk_files = []
+    # for f in all_files:
+    #     match = re.search(rf"{re.escape(model_name)}_(\d+)\.csv", f)
+    #     if match and 0 <= int(match.group(1)) <= 50:
+    #         chunk_files.append(f)
+            
     for f in all_files:
-        match = re.search(rf"{re.escape(model_name)}_(\d+)\.csv", f)
+        match = re.search(rf"{re.escape(model_name)}_(\d+)_\d+_.*\.csv", f)
         if match and 0 <= int(match.group(1)) <= 50:
             chunk_files.append(f)
         
@@ -140,9 +145,9 @@ def aggregate_full_mcq_results(model_path: str, folder_path:str, pref_type: str,
 
 
     # Delete chunk files
-    for file in chunk_files:
-        os.remove(file)
-        print(f"Deleted: {file}")
+    # for file in chunk_files:
+    #     os.remove(file)
+    #     print(f"Deleted: {file}")
 
     no_pref_acc = calculate_accuracy(merged_df, f'no_pref_ans')
     pref_acc = calculate_accuracy(merged_df, f'pref_ans')
