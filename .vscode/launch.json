@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Aggregate",
+            "type": "python",
+            "request": "launch",
+            "program": "evaluations/aggregate2full.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            // "env": {
+            //     "CONDA_DEFAULT_ENV": "pref_aligner",
+            //     "PATH": "/usr/local/Caskroom/miniforge/base/envs/pref_aligner/bin/:${env:PATH}"
+            // }
+        },
+    ]
+}
