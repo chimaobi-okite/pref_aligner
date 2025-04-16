@@ -6,7 +6,7 @@
 #SBATCH --time=48:10:00
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=2
-#SBATCH --mem-per-gpu=64GB
+#SBATCH --mem-per-gpu=48GB
 #SBATCH --account=mihalcea98 # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
 
 # Load modules
@@ -19,8 +19,8 @@ nvidia-smi
 # Set variables for the run
 PROMPT_METHOD="icl" # Options: "icl" or "cot" or "direct"
 PREF_TYPE="relevant"       # Options: "relevant" or "irrelevant"
-# MODEL_PATH="kaist-ai/janus-7b"
-MODEL_PATH="kaist-ai/janus-7b" # model you're running here
+MODEL_PATH="kaist-ai/janus-7b"
+# MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3" # model you're running here
 
 # Run job for the assigned chunk
 CUDA_LAUNCH_BLOCKING=1 

@@ -8,7 +8,7 @@ module load python/3.11.5
 source venv/bin/activate
 
 # Set variables for the run
-PROMPT_METHOD="cot"
+PROMPT_METHOD="icl"
 FOLDER_PATH="mcq_results" # doesn't change for now
 PREF_TYPE="relevant"    # Options: "relevant" or "irrelevant"
 DATA_PATH="full" # data you're running here
