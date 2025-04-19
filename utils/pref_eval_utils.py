@@ -1,4 +1,3 @@
-import argparse
 import os
 import re
 import ast
@@ -7,11 +6,24 @@ import pandas as pd
 from openai import AzureOpenAI
 from openai import OpenAI
 from together import Together
+from dotenv import load_dotenv
 
+load_dotenv()
+
+endpoint = os.getenv("AZUREOPENAI_ENDPOINT")  
+deployment = "gpt-4o-mini"
+subscription_key = os.getenv("AZURE_OPENAI_API_KEY", "REPLACE_WITH_YOUR_KEY_VALUE_HERE")
 openai_api_key = os.getenv("OPENAI_API_KEY")
 together_api_key = os.getenv("TOGETHER_API_KEY")
 
-client = OpenAI(api_key=openai_api_key)
+
+# client = OpenAI(api_key=openai_api_key)
+
+client = AzureOpenAI(  
+    azure_endpoint=endpoint,  
+    api_key=subscription_key,  
+    api_version="2025-01-01-preview",
+)
 
 def generate_preference_judge_system_prompt(user_prompt: str, preference: str,
                                              response_without_preference: str,
@@ -72,7 +84,7 @@ def get_pref_evaluation(user_prompt: str,
         {"role": "system", "content": system_prompt},
         ]
   response = client.chat.completions.create(
-        model="gpt-4o-mini-2024-07-18", # "gpt-4-32k", # model = "deployment_name".
+        model=deployment, # "gpt-4-32k", # model = "deployment_name".
         messages=messages,
         temperature=0,
         seed=42,
@@ -97,8 +109,16 @@ def estimate_cost(prompt_tokens, completion_tokens, input_price_per_1m=0.15, out
 
 
 def preprocess_df_for_pref_eval(df_path:str, 
-                                main_path:str = "/content/robuset_main.csv") -> pd.DataFrame:
+                                main_path:str = "data/robuset_main.csv") -> pd.DataFrame:
     df = pd.read_csv(df_path)
+    columns_to_rename = {
+    'no_pref_ans': 'nopref_answer',
+    'pref_ans': 'pref_answer'
+    }
+
+    # rename columns if necessary 
+    df.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df.columns}, inplace=True)
+    
     robo_df = pd.read_csv(main_path)
     df['dup_id'] = df.groupby('question').cumcount()
     robo_df['dup_id'] = robo_df.groupby('question').cumcount()
