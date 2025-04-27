@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 from utils.mcq_utils import format_mcq_user_prompt
-from utils.pref_eval_utils import estimate_cost, extract_judgment_from_xml, get_pref_evaluation, preprocess_df_for_pref_eval
+from utils.pref_eval_utils import estimate_cost, extract_judgment_from_xml, get_full_df, get_pref_evaluation, preprocess_df_for_pref_eval
 
 
 
@@ -18,7 +18,13 @@ def run_pref_eval(df_path: str):
     df: pd.DataFrame = preprocess_df_for_pref_eval(df_path=df_path)
     
     print(f"Model running on is {df_path}")
+    
+    if 'nopref_res' not in df.columns and 'no_pref_res' not in df.columns:
+        print("doing the right thing")
+        df_path = get_full_df(df_path = df_path)
+        df = pd.read_csv(df_path)
 
+    # df = df[:5]
     explanations = []
     answers = []
     num_prompt_tokens = []

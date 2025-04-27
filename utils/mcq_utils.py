@@ -1,4 +1,5 @@
 import string
+from typing import List
 
 def format_mcq_user_prompt(question, choices):
     ref_len = len(choices)
@@ -34,6 +35,34 @@ def format_system_prompt(profile = None, examples = None, prompt_method=None):
         - Your response should be correct as well as align to the provided user preference when applicable
         """
     return sys_prompt
+
+
+def format_higher_set_system_prompt(profile = None, examples = None, prompt_method=None):
+    sys_prompt = f"""You are an AI assistant that provides factually accurate, unbiased, and helpful responses.\n"""
+    if profile: 
+        sys_prompt += f"""Here are the user preferences: {profile}.
+        # Tailor your answer to relevant perferences.\n
+        """
+    if examples and prompt_method == 'icl':
+        sys_prompt += "\n\nHere are some examples:\n"
+        sys_prompt += examples.strip()  # Remove excess spacing if any
+        
+    if prompt_method == "cot":
+        sys_prompt += """
+        Here are some instructions:
+        - Think step-by-step before answering.
+        - Your response should be correct as well as align to only the relevant user preferences among all preferences
+        when applicable
+        """
+    return sys_prompt
+
+def build_pref_set(irrelevant_prefs: List[str], relevant_pref: str, position: int = None) -> List[str]:
+    if position is None:
+        position = len(irrelevant_prefs) // 2
+    pref_list = irrelevant_prefs.copy()
+    pref_list.insert(position, relevant_pref)
+    return pref_list
+    
 
 
 def calculate_accuracy(merged_df, answer_column, gold_column='gold_option'):

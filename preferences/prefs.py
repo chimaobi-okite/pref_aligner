@@ -58,3 +58,9 @@ IRREVANT_PREFS = {
     11: "I strongly dislike video and audio-based educational resources and strongly prefer written content and textbooks.",
     12: "I have a strong preference for vegan, plant-based skincare formulas that are free from any animal-derived ingredients.",
 }
+
+IRRELEVANT_FOR_RELEVANT_PREFS = ["I don't enjoy self-paced learning; I perform better with scheduled, interactive classes.",
+                  "I have a strong preference for vegan, plant-based skincare formulas that are free from any animal-derived ingredients.",
+                  "I have a strong aversion to online educational resources that require subscriptions or paid memberships. I prefer free and open-source materials.",
+                  "I prefer self-paced, asynchronous learning resources over scheduled classes or live sessions.",
+                  "I don't like participating in team-building retreats or off-site activities.",]

@@ -3,6 +3,7 @@ import os
 
 class PrefType(str, Enum):
     RELEVANT = "relevant"
+    IRRELEVANT_SET = "irrelevant_set"
     IRRELEVANT = "irrelevant"
     
 class PromptMethod(str, Enum):

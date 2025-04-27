@@ -128,3 +128,78 @@ def preprocess_df_for_pref_eval(df_path:str,
     merged = merged.drop(columns=['options_y', 'dup_id'])
     merged = merged.rename(columns={'options_x': 'options'})
     return merged
+
+def rename_path(old_path):
+    folder = os.path.dirname(old_path)
+    filename = os.path.basename(old_path)
+    model_name = re.sub(r'(_\d+.*)', '', filename)
+    if not 'csv' in model_name:
+        new_filename = model_name + '.csv'
+    else:
+        new_filename = model_name
+    new_path = os.path.join(folder, new_filename)
+    os.rename(old_path, new_path)
+    print(f"Renamed:\nFrom: {old_path}\nTo:   {new_path}")
+    return new_path
+    
+
+
+def get_full_df(df_path: str):
+    relevant_path = None
+    
+    if "Llama-3.3-70B-Instruct-Turbo-Free" in df_path and "icl" in df_path:
+        df_path = rename_path(df_path)
+        relevant_path = f"results/mcq_results/relevant/direct/full/Llama-3.3-70B-Instruct-Turbo-Free_7208_0.007769145394006638_0.944060773480663.csv"
+    
+    model_filename = os.path.basename(df_path)
+    model_name = model_filename.replace('.csv', '') 
+    parts = df_path.split(os.sep)
+    
+    model_index = parts.index(model_filename)
+    method_name = parts[model_index - 2]
+    
+    if not relevant_path:
+        relevant_path = f"results/mcq_results/relevant/direct/full/{model_name}-direct-full.csv"
+    
+    df_irrel = pd.read_csv(df_path)
+    df_relevant = pd.read_csv(relevant_path)
+    
+    columns_to_rename = {
+    'no_pref_ans': 'nopref_answer',
+    'pref_ans': 'pref_answer',
+    'no_pref_res': 'nopref_res',
+    }
+    
+    df_irrel.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df_irrel.columns}, inplace=True)
+    df_relevant.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df_relevant.columns}, inplace=True)
+    
+    df_relevant = df_relevant.drop_duplicates(subset='question')
+    
+    initial_nopref_acc = len(df_relevant[df_relevant['nopref_answer'] == df_relevant['gold_option']])/len(df_relevant)
+    
+    initial_pref_acc = len(df_relevant[df_relevant['pref_answer'] == df_relevant['gold_option']])/len(df_relevant)
+    new_pref_acc = len(df_relevant[df_irrel['pref_answer'] == df_irrel['gold_option']])/len(df_relevant)
+    
+    df_merged = df_irrel.merge(
+        df_relevant[['question', 'nopref_res', 'nopref_answer']],
+        on='question',
+        how='left'
+    )
+    
+    merged_nopref_acc = len(df_merged[df_merged['nopref_answer'] == df_merged['gold_option']])/len(df_merged)
+    merged_pref_acc = len(df_merged[df_merged['pref_answer'] == df_merged['gold_option']])/len(df_merged)
+    
+    print(f"initial no pref accuracy is {initial_nopref_acc}")
+    print(f"Merged df no pref accuracy is {merged_nopref_acc}")
+    
+    print(f"initial pref accuracy is {initial_pref_acc}")
+    print(f"New df pref accuracy is {new_pref_acc}")
+    
+    print(f"Merged df pref accuracy is {merged_pref_acc}")
+    
+    save_path = df_path.replace('.csv', f'-{method_name}-full.csv')
+    df_merged.to_csv(save_path, index=False)
+    
+    print(f"Saved merged file to: {save_path}")
+    return save_path
+    

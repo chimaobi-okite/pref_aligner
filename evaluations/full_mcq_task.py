@@ -36,6 +36,13 @@ together_api_key = os.getenv("TOGETHER_API_KEY")
 openai_client = OpenAI(api_key=openai_api_key)
 together_client = Together(api_key=together_api_key)
 
+# openai_client = AzureOpenAI(  
+#     azure_endpoint=endpoint,  
+#     api_key=subscription_key,  
+#     api_version="2025-01-01-preview",
+# )
+
+
 
 client_models = ["meta-llama/Llama-3.3-70B-Instruct-Turbo",
                  "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
@@ -60,11 +67,17 @@ def run_client_mcq_generation(user_prompts, batch_options_list, sys_messages, cl
     for messages in batched_inputs:
         response = client.chat.completions.create(
             model=model, # "gpt-4-32k", # model = "deployment_name".
+            # model = deployment,
             messages=messages,
             temperature=0,
             seed=42,
         )
-        responses.append(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if not content:
+            print(messages)
+            print(response.choices[0].message.content)
+            content = "None"
+        responses.append(content)
     list_of_references = batch_options_list[:input_len]
     list_of_references = [ast.literal_eval(refs) for refs in list_of_references]
     predictions, invalids = extract_answer_letters_batch(responses, list_of_references)

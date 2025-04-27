@@ -2,10 +2,15 @@ import argparse
 
 from enums import PrefType, PromptMethod
 from evaluations.full_mcq_task import full_qa_task
+from evaluations.mcq_irr_task import full_pref_qa_task
 
 
 def main(model_path: str, pref_type: str, prompt_method: str):
-    full_qa_task(model_path, pref_type, prompt_method,)
+    if (pref_type == PrefType.IRRELEVANT_SET.value) or ("70" in model_path):
+        print("running full")
+        full_pref_qa_task(model_path, pref_type, prompt_method,)
+    else:
+        full_qa_task(model_path, pref_type, prompt_method,)
 
 
 if __name__ == "__main__":
