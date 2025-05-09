@@ -23,7 +23,7 @@ def format_system_prompt(profile = None, examples = None, prompt_method=None):
     sys_prompt = f"""You are an AI assistant that provides factually accurate, unbiased, and helpful responses.\n"""
     if profile: 
         sys_prompt += f"""Here is the user preference: {profile}.
-        Tailor your answer to thier perference.\n"""
+        Tailor your answer to their perference.\n"""
     if examples and prompt_method == 'icl':
         sys_prompt += "\n\nHere are some examples:\n"
         sys_prompt += examples.strip()  # Remove excess spacing if any
@@ -32,7 +32,7 @@ def format_system_prompt(profile = None, examples = None, prompt_method=None):
         sys_prompt += """
         Here are some instructions:
         - Think step-by-step before answering.
-        - Your response should be correct as well as align to the provided user preference when applicable
+        - Your response should be correct as well as aligned to the provided user preference when applicable
         """
     return sys_prompt
 
@@ -56,12 +56,60 @@ def format_higher_set_system_prompt(profile = None, examples = None, prompt_meth
         """
     return sys_prompt
 
-def build_pref_set(irrelevant_prefs: List[str], relevant_pref: str, position: int = None) -> List[str]:
+def build_pref_set(irrelevant_prefs: List[str], relevant_pref: str = None, position: int = None) -> List[str]:
     if position is None:
         position = len(irrelevant_prefs) // 2
     pref_list = irrelevant_prefs.copy()
-    pref_list.insert(position, relevant_pref)
+    if relevant_pref:
+        pref_list.insert(position, relevant_pref)
     return pref_list
+
+def critic_message(question, response_to_q, preference):
+    
+    # crtic_sys_message= f"""Follow the instructions below to review your initial response to a  user query.
+    
+    # You are to return your output as a JSON object with the following structure:
+    # {{"critic": "[Your critique here]","response": "[Your revised response here]"}}
+    
+    # Critique Request: Review your previous response to the user’s question in the last conversation turn.
+    # Check if the response is factually accurate and adheres to or violates any user preferences stated earlier in the conversation that 
+    # relate to this query. Provide a critique on how well those preferences were followed in 2 sentences.
+    
+    # User Preference: {preference}
+    # Initial Question: {question}
+    # Your intial response: {response_to_q}
+    
+    # Answer in this format:
+    # Critic: [Your Critique Here]
+    
+    # Revision Request: Based on your critique, please rewrite your previous response to be factually accurate and aligned more closely
+    # with the user’s stated preferences. Answer the question again:
+    
+    # Response: [Revised Response Here]
+    # 
+    # Return only the JSON dictionary.
+    # """
+    
+    critic_sys_message = f"""Follow the instructions below to review your initial response to a user query.
+    
+    You are to return your output as a JSON object with the following structure:
+    {{"critic": "[Your critique here]","response": "[Your revised response here]"}}
+
+    Instructions:
+    1. Review your previous response to the user's question in the last conversation turn.
+    2. Check if the response is factually accurate and whether it aligns with the user's stated preferences.
+    3. Provide a brief critique (2 sentences) on factual accuracy and preference alignment.
+    4. Then, rewrite your response to better adhere to both factual correctness and the stated preference. Your revised response should also include the reference option.
+
+    User Preference: {preference}
+    Initial Question: {question}
+    Your Initial Response: {response_to_q}
+
+    Return only the JSON dictionary.
+    """
+
+    
+    return critic_sys_message
     
 
 
@@ -99,3 +147,22 @@ def get_last_part(s: str) -> str:
 
 def calculate_math_accuracy(merged_df, is_same_column):
     return merged_df[is_same_column].eq("yes").sum() / len(merged_df)
+
+def aligner_agent_message(query, response, preference):
+    aligner_message = f"""You are a preference aligner agent. Your task is to adjust a given response to better reflect a specified user preference, without re-answering the original query. 
+    You are provided with the original query, the initial response from an answering agent, and a user preference.
+
+    Only modify the response if the preference is relevant to the query or response. If the preference is irrelevant, return the original response unchanged.
+
+    Query: {query}
+
+    Initial Response: {response}
+
+    User Preference: {preference}
+
+    ###
+    Return a JSON object with the following fields:
+    - "response": the aligned response
+    - "thoughts": a brief explanation of how (or whether) the response was aligned
+    """
+    return aligner_message

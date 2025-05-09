@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from math import ceil
 from sklearn.model_selection import train_test_split
@@ -135,3 +136,67 @@ def aggregate_datasets(tqa_df: pd.DataFrame,
         append_row(i, q, opts, answer_key, answer, cat, None, "cais/mmlu", _get_pref(MMLU_PREFS, i))
 
     return pd.DataFrame(data)
+
+def assign_preferences(df, prefs_dict):
+    pref_ids = list(prefs_dict.keys())
+    df = df.copy()
+    df['preference_id'] = [pref_ids[i % len(pref_ids)] for i in range(len(df))]
+    df['preference'] = df['preference_id'].map(prefs_dict)
+    return df
+
+def merge_df_responses(df_path: str, main_df_path:str):
+    
+    df = pd.read_csv(df_path)
+    df_main = pd.read_csv(main_df_path)
+    
+    columns_to_rename = {
+    'no_pref_ans': 'nopref_answer',
+    'pref_ans': 'pref_answer',
+    'no_pref_res': 'nopref_res',
+    }
+    
+    model_filename = os.path.basename(df_path)
+    model_name = model_filename.replace('.csv', '') 
+    parts = df_path.split(os.sep)
+    
+    model_index = parts.index(model_filename)
+    method_name = parts[model_index - 2]
+    
+    df.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df.columns}, inplace=True)
+    df_main.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df_main.columns}, inplace=True)
+    
+    
+    df = df.sort_values(by=['question', 'options']).reset_index(drop=True)
+    df_main = df_main.sort_values(by=['question', 'options']).reset_index(drop=True)
+    
+    print(f"Length of df {len(df)}")
+    print(f"Length of main_df {len(df_main)}")
+    # df_relevant = df_relevant.drop_duplicates(subset='question')
+    
+    initial_nopref_acc = len(df_main[df_main['nopref_answer'] == df_main['gold_option']])/len(df_main)
+    
+    initial_pref_acc = len(df_main[df_main['pref_answer'] == df_main['gold_option']])/len(df_main)
+    new_pref_acc = len(df[df['pref_answer'] == df['gold_option']])/len(df_main)
+    
+    df_merged = df
+    df_merged['nopref_answer'] = df_main['nopref_answer']
+    df_merged['nopref_res'] = df_main['nopref_res']
+    
+    print(f"Length of merged_df {len(df_merged)}")
+    
+    merged_nopref_acc = len(df_merged[df_merged['nopref_answer'] == df_merged['gold_option']])/len(df_merged)
+    merged_pref_acc = len(df_merged[df_merged['pref_answer'] == df_merged['gold_option']])/len(df_merged)
+    
+    print(f"initial no pref accuracy is {initial_nopref_acc}")
+    print(f"Merged df no pref accuracy is {merged_nopref_acc}")
+    
+    print(f"initial pref accuracy is {initial_pref_acc}")
+    print(f"New df pref accuracy is {new_pref_acc}")
+    
+    print(f"Merged df pref accuracy is {merged_pref_acc}")
+    
+    save_path = df_path.replace('.csv', f'-full-new.csv')
+    df_merged.to_csv(save_path, index=False)
+    
+    print(f"Saved merged file to: {save_path}")
+    return save_path

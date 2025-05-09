@@ -48,7 +48,7 @@ random.seed(SEED)
 def save_csv(df:pd.DataFrame, pref_type: str, model_name:str, prompt_method: str = 'direct',):
     save_path = f"results/mcq_results/{pref_type}/{prompt_method}/full"
     os.makedirs(save_path, exist_ok=True)
-    df.to_csv(f"{save_path}/{model_name}.csv", index=False)
+    df.to_csv(f"{save_path}/{model_name}_dont_use.csv", index=False)
 
 
 def run_client_mcq_generation(user_prompts, batch_options_list, sys_messages, client, model):
@@ -120,7 +120,7 @@ def get_batch_examples(batch_sources):
         batch_examples.append(examples)
     return batch_examples
 
-def full_pref_qa_task(model_path, pref_type, prompt_method,):
+def full_pref_qa_task(model_path, pref_type, prompt_method,enable_thinking):
     
     BATCH_SIZE = 32
     print(model_path)

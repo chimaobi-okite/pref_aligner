@@ -147,9 +147,9 @@ def rename_path(old_path):
 def get_full_df(df_path: str):
     relevant_path = None
     
-    if "Llama-3.3-70B-Instruct-Turbo-Free" in df_path and "icl" in df_path:
+    if "Llama-3.3-70B-Instruct-Turbo-Free" in df_path: #and "icl" in df_path:
         df_path = rename_path(df_path)
-        relevant_path = f"results/mcq_results/relevant/direct/full/Llama-3.3-70B-Instruct-Turbo-Free_7208_0.007769145394006638_0.944060773480663.csv"
+        relevant_path = f"results/mcq_results/relevant/direct/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
     
     model_filename = os.path.basename(df_path)
     model_name = model_filename.replace('.csv', '') 

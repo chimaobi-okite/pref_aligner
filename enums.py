@@ -10,6 +10,7 @@ class PromptMethod(str, Enum):
     ICL = "icl"
     DIRECT = "direct"
     COT = "cot"
+    SELF_CRITIC = "self_critic"
 
 # Example input (replace with your actual source)
 pref_type_input = "relevant"  # or "irrelevant"

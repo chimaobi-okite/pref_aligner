@@ -1,6 +1,7 @@
 import json
 import os
 import ast
+import re
 import string
 from openai import AzureOpenAI
 from openai import OpenAI
@@ -186,52 +187,6 @@ def extract_letter_from_json(text):
     return option
 
 
-# def extract_answer_letters_batch(responses, list_of_references):
-#     """
-#     Extract answer letters for a batch of responses and reference lists.
-#     Runs everything in a single forward pass using batching.
-    
-#     Args:
-#         responses (List[str]): List of model-generated responses
-#         list_of_references (List[List[str]]): List of options for each response
-        
-#     Returns:
-#         List[str|int]: List of predicted labels like ['A', 'C', -1]
-#     """
-#     prompts = [
-#         create_extraction_instruction(response, references)
-#         for response, references in zip(responses, list_of_references)
-#     ]
-
-
-#     inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
-
-    
-#     outputs = model.generate(
-#         inputs['input_ids'],
-#         max_new_tokens=1,
-#         pad_token_id=tokenizer.eos_token_id
-#     )
-
-#     decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-#     predicted_labels = []
-#     invalids = []
-#     for i, prediction in enumerate(decoded):
-#         label = prediction.strip()[-1]  # get last character
-#         if label in string.ascii_uppercase:
-#             predicted_labels.append(label)
-#             invalids.append(0)
-#         else:
-#             #print(f"Invalid answer generated: {prediction}")
-#             invalids.append(1)
-#             gpt_label = mcq_gpt_extractor(responses[i], extract_references(list_of_references[i]))
-#             #print(gpt_label)
-#             final_label = extract_letter_from_json(gpt_label)
-#             #print(final_label)
-#             predicted_labels.append(final_label)
-
-#     return predicted_labels, invalids
-
 def extract_answer_letters_batch(responses, list_of_references):
     """
     Extract answer letters for a batch of responses and reference lists.
@@ -244,36 +199,149 @@ def extract_answer_letters_batch(responses, list_of_references):
     Returns:
         List[str|int]: List of predicted labels like ['A', 'C', -1]
     """
-    # prompts = [
-    #     create_extraction_instruction(response, references)
-    #     for response, references in zip(responses, list_of_references)
-    # ]
+    prompts = [
+        create_extraction_instruction(response, references)
+        for response, references in zip(responses, list_of_references)
+    ]
 
 
-    # inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
+    inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
 
     
-    # outputs = model.generate(
-    #     inputs['input_ids'],
-    #     max_new_tokens=1,
-    #     pad_token_id=tokenizer.eos_token_id
-    # )
+    outputs = model.generate(
+        inputs['input_ids'],
+        max_new_tokens=1,
+        pad_token_id=tokenizer.eos_token_id
+    )
 
-    # decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+    decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
     predicted_labels = []
     invalids = []
-    for i, res in enumerate(responses):
-        # label = prediction.strip()[-1]  # get last character
-        # if label in string.ascii_uppercase:
-        #     predicted_labels.append(label)
-        #     invalids.append(0)
-        # else:
-        #     #print(f"Invalid answer generated: {prediction}")
-        invalids.append(0)
-        gpt_label = mcq_gpt_extractor(responses[i], extract_references(list_of_references[i]))
-        #print(gpt_label)
-        final_label = extract_letter_from_json(gpt_label)
-        #print(final_label)
-        predicted_labels.append(final_label)
+    for i, prediction in enumerate(decoded):
+        label = prediction.strip()[-1]  # get last character
+        if label in string.ascii_uppercase:
+            predicted_labels.append(label)
+            invalids.append(0)
+        else:
+            # print(f"Invalid answer generated: {prediction}")
+            invalids.append(1)
+            gpt_label = mcq_gpt_extractor(responses[i], extract_references(list_of_references[i]))
+            #print(gpt_label)
+            final_label = extract_letter_from_json(gpt_label)
+            #print(final_label)
+            predicted_labels.append(final_label)
 
     return predicted_labels, invalids
+
+# def extract_answer_letters_batch(responses, list_of_references):
+#     """
+#     Extract answer letters for a batch of responses and reference lists.
+#     Runs everything in a single forward pass using batching.
+    
+#     Args:
+#         responses (List[str]): List of model-generated responses
+#         list_of_references (List[List[str]]): List of options for each response
+        
+#     Returns:
+#         List[str|int]: List of predicted labels like ['A', 'C', -1]
+#     """
+#     # prompts = [
+#     #     create_extraction_instruction(response, references)
+#     #     for response, references in zip(responses, list_of_references)
+#     # ]
+
+
+#     # inputs = tokenizer(prompts, return_tensors="pt", padding=True, truncation=True).to(model.device)
+
+    
+#     # outputs = model.generate(
+#     #     inputs['input_ids'],
+#     #     max_new_tokens=1,
+#     #     pad_token_id=tokenizer.eos_token_id
+#     # )
+
+#     # decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+#     predicted_labels = []
+#     invalids = []
+#     for i, res in enumerate(responses):
+#         # label = prediction.strip()[-1]  # get last character
+#         # if label in string.ascii_uppercase:
+#         #     predicted_labels.append(label)
+#         #     invalids.append(0)
+#         # else:
+#         #     #print(f"Invalid answer generated: {prediction}")
+#         invalids.append(0)
+#         gpt_label = mcq_gpt_extractor(responses[i], extract_references(list_of_references[i]))
+#         #print(gpt_label)
+#         final_label = extract_letter_from_json(gpt_label)
+#         #print(final_label)
+#         predicted_labels.append(final_label)
+
+#     return predicted_labels, invalids
+
+def extract_self_critic_response(response):
+    """
+    Extracts the text following 'Response:' from a system message.
+    
+    Args:
+        system_message (str): The full system prompt string.
+        
+    Returns:
+        str: The extracted revised response text (after 'Response:').
+    """
+    match = re.search(r"Response:\s*(.*)", response, re.DOTALL)
+    return match.group(1).strip() if match else None
+
+def extract_critic_and_response(text):
+    """
+    Extracts the 'critic' and 'response' fields from a critics models outputs
+    """
+    # Try parsing directly as JSON
+    try:
+        parsed = json.loads(text)
+        critic = str(parsed.get('critic', '')).strip()
+        response = str(parsed.get('response', '')).strip()
+        return {
+            'critic': critic,
+            'response': response
+        }
+    except json.JSONDecodeError:
+        # print(text)
+        # Try to recover from slightly malformed outputs using regex
+        critic_match = re.search(r'"?critic"?\s*:\s*["“](.*?)["”]\s*,?', text, re.DOTALL | re.IGNORECASE)
+        response_match = re.search(r'"?response"?\s*:\s*["“](.*?)["”]\s*}?', text, re.DOTALL | re.IGNORECASE)
+        
+        if critic_match and response_match:
+            return {
+                'critic': critic_match.group(1).strip(),
+                'response': response_match.group(1).strip()
+            }
+    return None
+
+def extract_thoughts_and_response(text):
+    """
+    Extracts the 'thought' and 'response' fields from a aligner models outputs
+    """
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            thought = str(parsed.get('thoughts', '')).strip()
+            response = str(parsed.get('response', '')).strip()
+            return {
+                'thought': thought,
+                'response': response
+            }
+        else:
+            print(f"[Warning] Parsed JSON is not a dict: {parsed}")
+    except json.JSONDecodeError:
+        # print(text)
+        # Try to recover from slightly malformed outputs using regex
+        thought_match = re.search(r'"?thoughts"?\s*:\s*["“](.*?)["”]\s*,?', text, re.DOTALL | re.IGNORECASE)
+        response_match = re.search(r'"?response"?\s*:\s*["“](.*?)["”]\s*}?', text, re.DOTALL | re.IGNORECASE)
+        
+        if thought_match and response_match:
+            return {
+                'thought': thought_match.group(1).strip(),
+                'response': response_match.group(1).strip()
+            }
+    return None
