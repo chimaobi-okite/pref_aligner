@@ -127,7 +127,7 @@ def run_janus_aligner_generation(user_messages, batch_options_list, batch_respon
 
 def run_aligner(df_path:str, model_path, pref_type):
     
-    print(f"Running aligner model model {model_path}")
+    print(f"Running aligner model model {model_path}, on pref type {pref_type}")
     
     BATCH_SIZE=32
     is_janus = False

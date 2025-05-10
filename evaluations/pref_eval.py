@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 from utils.mcq_utils import format_mcq_user_prompt
-from utils.pref_eval_utils import estimate_cost, extract_judgment_from_xml, get_full_df, get_pref_evaluation, preprocess_df_for_pref_eval
+from utils.pref_eval_utils import estimate_cost, extract_judgment_from_xml, get_full_df, get_pref_evaluation, preprocess_aligner_df, preprocess_df_for_pref_eval
 
 
 
@@ -15,7 +15,11 @@ def save_evaluation(df, df_path:str):
     df.to_csv(new_path, index=False)
 
 def run_pref_eval(df_path: str):
-    df: pd.DataFrame = preprocess_df_for_pref_eval(df_path=df_path)
+    if 'aligner' in df_path:
+        df = pd.read_csv(df_path)
+        df = preprocess_aligner_df(df)
+    else:
+        df: pd.DataFrame = preprocess_df_for_pref_eval(df_path=df_path)
     
     print(f"Model running on is {df_path}")
     

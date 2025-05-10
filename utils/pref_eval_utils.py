@@ -144,6 +144,29 @@ def rename_path(old_path):
     return new_path
     
 
+def preprocess_aligner_df(df):
+    main_df = df.copy()
+    
+    cols_to_drop = ['pref_correct','pref_eval_explanation','pref_eval_rating', 'pref_eval_prompt_tokens',
+                    'pref_eval_completion_tokens', 'pref_eval_cost', 'pref_correct',
+                    'nopref_correct', 'followed_pref', 'is_robust',]
+    columns_to_rename = columns_to_rename = {
+        'pref_answer': 'old_pref_answer',
+        'pref_res': 'old_pref_res',
+        'pref_correct': 'old_pref_correct'
+        }
+        
+    main_df.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in main_df.columns}, inplace=True)
+    main_df = main_df.drop(columns=[col for col in cols_to_drop if col in main_df.columns])
+
+    columns_to_rename = columns_to_rename = {
+        'aligner_answer': 'pref_answer',
+        'aligner_res': 'pref_res',
+        }
+    main_df.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in main_df.columns}, inplace=True)
+    print(main_df.columns)
+    return main_df
+
 
 def get_full_df(df_path: str):
     relevant_path = None

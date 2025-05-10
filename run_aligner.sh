@@ -7,7 +7,7 @@
 #SBATCH --gpus=1
 #SBATCH --cpus-per-gpu=2
 #SBATCH --mem-per-gpu=48GB
-#SBATCH --account=chaijy2 # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
+#SBATCH --account=mihalcea_owned1 # cse692w25_class # mihalcea_owned1 # mihalcea98 # chaijy2  # mihalcea98 # mihalcea_owned1
 
 module load python/3.11.5 cuda
 source venv/bin/activate  # Ensure the virtual env path is correct
@@ -17,8 +17,8 @@ nvidia-smi
 # DF_PATH="results/mcq_results/relevant/direct/full/Mistral-7B-Instruct-v0.3-direct-full.csv"
 # MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3"
 
-DF_PATH="results/mcq_results/relevant/direct/full/Mixtral-8x7B-Instruct-v0.1-direct-full.csv"
-MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1"
+# DF_PATH="results/mcq_results/relevant/direct/full/Mixtral-8x7B-Instruct-v0.1-direct-full.csv"
+# MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 # DF_PATH="results/mcq_results/relevant/direct/full/Llama-3.1-8B-Instruct-direct-full.csv"
 # MODEL_PATH="meta-llama/Llama-3.1-8B-Instruct"
@@ -26,15 +26,15 @@ MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1"
 # DF_PATH="results/mcq_results/relevant/direct/full/janus-7b-direct-full.csv"
 # MODEL_PATH="kaist-ai/janus-7b"
 
-# DF_PATH="results/mcq_results/relevant/direct/full/Llama-3.3-70B-Instruct-Turbo-Free_eval.csv"
-# MODEL_PATH="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
+DF_PATH="results/mcq_results/relevant/direct/full/Llama-3.3-70B-Instruct-Turbo-Free-direct-full_eval.csv"
+MODEL_PATH="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
 
 # DF_PATH="results/mcq_results/relevant/direct/full/gemma-2-9b-it.csv"
 # MODEL_PATH="google/gemma-2-9b-it"
 
 
 
-PREF_TYPE="irrelevant_set"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
+PREF_TYPE="irrelevant"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
 
 # Run job for the assigned chunk
 CUDA_LAUNCH_BLOCKING=1 
