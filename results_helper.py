@@ -1,11 +1,14 @@
 import os
 import glob
 import itertools
+from tkinter import font
 
+from matplotlib.font_manager import font_scalings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib import cm, patches
+import matplotlib.colors as mcolors
 import seaborn as sns
 
 FONT_SIZE = 15
@@ -26,9 +29,24 @@ plt.rcParams["font.family"] = "Times New Roman"
 # Global variables
 # -----------------------------
 
-RELEVANCE = ["relevant", "irrelevant_set"]
+RELEVANCE = [
+    "relevant",
+    "irrelevant_set",
+    "irrelevant",
+]
+RELEVANCE_DICT = {
+    "relevant": "Relevant",
+    "irrelevant_set": "Mixed",
+    "irrelevant": "Irrelevant",
+}
 # Prompt methods to process
-PROMPT_METHODS = ["direct", "cot", "icl"]
+PROMPT_METHODS = [
+    "direct",
+    "cot",
+    "icl",
+    "self_critic",
+    # "aligner"
+]
 
 # List of models (as provided)
 MODELS_FULL = [
@@ -38,7 +56,7 @@ MODELS_FULL = [
     "kaist-ai/janus-7b",
     "mistralai/Mixtral-8x7B-Instruct-v0.1",
     "openai/gpt-4o-mini-2024-07-18",
-    "deepseek/DeepSeek-R1-Distill-Llama-70B-free"
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
     "google/gemma-2-9b-it",
     "google/gemma-2-27b-it",
     "qwen/Qwen3-8B",
@@ -530,15 +548,6 @@ def split_to_df_by_dataset(results_dict, verbose=False):
         dataset="full",
         field="dataset_path",
     ):
-        # Read the full dataset
-        # if full_path is None or not os.path.exists(full_path):
-        #     if verbose:
-        #         print(f"Warning: No full dataset found for [{relevance}, {method}, {model}].")
-        #     full_df = None
-        # else:
-        #     full_df = pd.read_csv(full_path)
-        #     # Compute extra columns if neded
-        #     full_df = compute_full(full_df)
         if full_path is None or not os.path.exists(full_path):
             if verbose:
                 print(f"Warning: No full dataset found for [{relevance}, {method}, {model}].")
@@ -576,27 +585,26 @@ def split_to_df_by_dataset(results_dict, verbose=False):
 # 
 #----------------------------------
 
-def BR(chunk):
+def BR(chunk, is_irrelevant=False):
     correct_no_pref_chunk = chunk.loc[chunk['nopref_correct']==1, :]
     robust_col = correct_no_pref_chunk.loc[:, "pref_correct"].mean()
     br = 1 - robust_col
     return br
 
-def RER(chunk):
-    robust_col = chunk.loc[:, "is_robust"].mean()
-    corr_no_pref = chunk.loc[:, "nopref_correct"].mean()
-    corr_pref = chunk.loc[:, "pref_correct"].mean()
-    rdr = 1 - robust_col/max(corr_no_pref, corr_pref)
-    return rdr
+def RER(chunk, is_irrelevant=False):
+    if is_irrelevant:
+        return 1 - chunk.loc[chunk["nopref_correct"]==1, "pref_correct"].mean()
+    return 1 - chunk.loc[chunk["nopref_correct"]==1, "is_robust"].mean()
 
-def AFR(chunk):
+def AFR(chunk, is_irrelevant=False):
     """Updated to take nopref_correct only"""
     robust_col = chunk.loc[chunk["nopref_correct"]==1, "is_robust"].mean()
     corr_pref = chunk.loc[chunk["nopref_correct"]==1, "pref_correct"].mean()
     afr = 1 - robust_col/corr_pref
     return afr
 
-def PVR(chunk):
+def PVR(chunk, is_irrelevant=False):
+    """Keep API consistent for error"""
     robust = chunk["pref_correct"].astype(bool)
     no_pref = chunk["nopref_correct"].astype(bool)
     # Calculate IoU
@@ -617,7 +625,7 @@ def compute_metrics(results_dict, verbose=False):
             ["BR", "RER", "AFR", "PVR"],
             [BR, RER, AFR, PVR],
         ):
-            percentage = func(df) * 100. if df is not None else None
+            percentage = func(df, is_irrelevant=(relevance=='irrelevant')) * 100. if df is not None else None
             results_dict.add(
                 percentage,
                 relevance=relevance,
@@ -653,15 +661,47 @@ def filter_axis(data, axis, filter_val=None, labels_to_filter=None):
 def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER", "AFR", "PVR"]):
     # Compute metrics
     last_method = None
-    for method, model, relevance in itertools.product(
+    last_relevance = None
+
+    def print_table(arr_list, ylabels):
+        if len(arr_list) == 0:
+            print("None")
+            return
+        arr = np.stack(arr_list, axis=0)
+        for i, model in enumerate(ylabels):
+            row = arr[i]
+            print(f"{model}\t", end="\t")
+            for j in range(len(row)):
+                if row[j] == min(arr[:, j]):
+                    print(f"& \\textbf{{{row[j]:.1f}}}\%", end=" ")
+                else:
+                    print(f"& {row[j]:.1f}\%", end=" ")
+            print("\\\\")
+        print("\\rowcolor{gray!15}\t")
+        print("\\textbf{Average}", end=" ")
+        mean = arr.mean(axis=0)
+        for i in range(len(mean)):
+            print(f"& {mean[i]:.1f}\%", end=" ")
+        print("\\\\")
+            
+    arr_list = []
+    ylabels = []
+    for relevance, method, model in itertools.product(
+        relevances,
         PROMPT_METHODS,
         MODELS,
-        relevances,
-    ):
-        # print(f"----------- {model} {relevance} {method} -----------")
+    ):  
+        if relevance != last_relevance:
+            print(f"-------------------- {relevance, RELEVANCE_DICT[relevance]} --------------------")
+            last_relevance = relevance
         if method != last_method:
-            print(f"-------------------- {method} --------------------")
+            if last_method is not None:
+                print_table(arr_list, ylabels)
+            print(f"\n-------------------- {method} --------------------")
             last_method = method
+            arr_list.clear()
+            ylabels.clear()
+    
         matr, key_order = results_dict.get_field_matrix(
             field=metrics,
             fixed_keys={
@@ -673,12 +713,14 @@ def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER",
             fill_missing=0.0,
         )
         # print(key_order)
-        print(MODELS_SHORT_DICT[model], end=" ")
+        repr = f"{MODELS_SHORT_DICT[model]}\t"
+        arr = np.zeros((len(matr)*len(matr[0])), dtype=np.float64)
         for j in range(len(matr[0])):
             for i in range(len(matr)):
-                print(f"& {matr[i][j]:.1f}\%", end=" ")
-        print("\\\\")
-        # print(np.array(matr).flatten())
+                arr[i*len(matr[0])+j] = matr[i][j]
+        if not np.allclose(arr, 0.0, 1e-4):
+            arr_list.append(arr)
+            ylabels.append(MODELS_SHORT_DICT[model])
 
 def plot_metrics_line(metric_array, metric):
     # For each prompt method, extract the accuracy values across models and plot them.
@@ -698,35 +740,62 @@ def plot_metrics_line(metric_array, metric):
     plt.savefig(os.path.join(stats_folder, "line_plot_"+metric+".pdf"))
 
 
-def named_scatter(x, y, keys, title, xlabel, ylabel, show=False):
-    against_plot_path = os.path.join("results/mcq_results/stats", "metric_scatter")
-    os.makedirs(against_plot_path, exist_ok=True)
-    
-    # plot
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.scatter(x, y,
-            marker='x',            # “×” marker
-            s=80,                 # marker size
-            color='orange',        # fill color
-            linewidths=1.5)        # edge line width
+def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
+    scatter_plot_path = os.path.join("results/mcq_results/stats", "metric_scatter")
+    os.makedirs(scatter_plot_path, exist_ok=True)
 
-    # add labels
-    for m, x, y in zip(keys, x, y):
-        ax.text(x + 0.008,     # small x-offset so text doesn't sit on the marker
-                y + 0.010,     # small y-offset
-                m, 
+    # use the Viridis colormap instead of Blues
+    cross_colors = cm.viridis(np.linspace(0.2, 1, len(x)))
+    fig, ax = plt.subplots(figsize=(8,8))
+
+    keys = [key+f" ({str(int(s))}%)" for key, s in zip(keys, scores)]
+    # plot each point separately so it gets its own label
+    for xi, yi, key, c in zip(x, y, keys, cross_colors):
+        ax.scatter(
+            xi, yi,
+            marker='x',
+            s=100,
+            color=c,
+            linewidths=2,
+            label=key
+        )
+
+    # add text labels if you still want them
+    if scores is not None:
+        for i, (s, xi, yi) in enumerate(zip(scores, x, y)):
+            if i == 9:
+                print("Modifying")
+                x_offset = xi + 0.08
+                y_offset = yi - 0.8
+            else:
+                x_offset = xi + 0.008
+                y_offset = yi + 0.010
+            ax.text(
+                x_offset,
+                y_offset,
+                f"{str(int(s))}%",
                 fontsize=15,
                 va='bottom',
-                ha='left')
+                ha='left'
+            )
 
-    # axes, title, grid
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
     ax.grid(which='both', linestyle='--', alpha=0.5)
-    
-    plt.tight_layout()
-    plt.savefig(os.path.join(against_plot_path, title.replace(" ", "_") + ".pdf"))
+
+    # legend below the chart, centered, in 2 columns
+    ax.legend(
+        loc='upper center',
+        bbox_to_anchor=(0.5, -0.1),
+        ncol=2,
+        frameon=False
+    )
+
+    # make room at the bottom for that legend
+    plt.tight_layout(rect=[0, -0.1, 1, 1])
+
+    plt.savefig(os.path.join(scatter_plot_path, title.replace(" ", "_") + ".pdf"))
     if show:
         plt.show()
     else:
@@ -754,17 +823,19 @@ def rel_irrel_backback_barplot(
     assert rel.shape == irr.shape == (len(models),), "Lengths must match models"
 
     # map [0,100] → [0.2,0.6]
-    COLOR_MAX = 1.0
-    COLOR_MIN = 0.2
+    # color_max = max(rel.max(), irr.max())
     def scale_intensity(vals):
-        return 0.2 + (np.clip(vals, 0, 100) / 100.0) * (COLOR_MAX - COLOR_MIN)
-        # return vals / 100.0
+        return 0.3 + (np.clip(vals, 10, 200) / 200)
 
     rel_norm = scale_intensity(rel)
     irr_norm = scale_intensity(irr)
 
-    irr_colors = cm.Reds(irr_norm)
+    # normalize to [0,1] for colormap
+    # norm = mcolors.Normalize(vmin=0, vmax=max_val)
+    # cmap = cm.PuBu
+
     rel_colors = cm.Blues(rel_norm)
+    irr_colors = cm.Oranges(irr_norm)
 
     n = len(models)
     y = np.arange(n)
@@ -793,18 +864,34 @@ def rel_irrel_backback_barplot(
 
     # annotate integer values just outside the bars
     for yi, val in zip(y, rel):
-        ax.text(-val - pad, yi, f"{int(val)}", ha='right', va='center')
+        ax.text(-val - pad, yi, f"{int(val)}%", ha='right', va='center', fontsize=12)
     for yi, val in zip(y, irr):
-        ax.text(val + pad, yi, f"{int(val)}", ha='left', va='center')
+        ax.text(val + pad, yi, f"{int(val)}%", ha='left', va='center', fontsize=12)
 
     # hide spines and ticks
     for spine in ax.spines.values():
         spine.set_visible(False)
     ax.set_xticks([])
     ax.set_title(title)
-
-    # set x-limits
     ax.set_xlim(left_lim, right_lim)
+    ax.set_xlabel("Relevant Preferences    |    Mixed Preferences   ", fontsize=12)
+
+    # # ─── add horizontal colorbar ─────────────────────────────────────────────
+    # # create a ScalarMappable for the full 0–100 range
+    # sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    # sm.set_array([])  # dummy
+
+    # # place colorbar below the plot
+    # cbar = fig.colorbar(
+    #     sm,
+    #     ax=ax,
+    #     orientation='horizontal',
+    #     fraction=0.05,
+    #     pad=0.15
+    # )
+    # cbar.set_label("Percentage", fontsize=12)
+    # cbar.set_ticks([0, 100])
+    # cbar.set_ticklabels(["0 %", "100 %"])
 
     plt.tight_layout()
     # save
@@ -845,49 +932,97 @@ def metric_heatmap(matrix, title, xticks, yticks, xlabel, ylabel, show=False):
     else:
         plt.close()
 
+
+def relevance_hbarplot(
+    data: np.ndarray,
+    relevance_list: list[str],
+    models: list[str],
+    title, 
+    xlabel,
+    show: bool = False
+):
+    """
+    data.shape == (n_models, n_rel)
+    draws one grouped horizontal‐bar plot with a custom legend row above
+    """
+
+    # output folder
+    hbar_path = os.path.join("results/mcq_results/stats", "relevance_hbarplot")
+    os.makedirs(hbar_path, exist_ok=True)
+
+    n_models = len(models)
+    n_rel    = len(relevance_list)
+
+    # positions for each model
+    y = np.arange(n_models)
+    bar_h = 0.8 / n_rel
+
+    # colors & map
+    cmap      = cm.Blues
+    colors    = cmap(np.linspace(0.2, 1.0, n_rel))
+    color_map = dict(zip(relevance_list, colors))
+
+    # ─── set up figure + GridSpec ─────────────────────────────────────────────
+    fig = plt.figure(constrained_layout=False, figsize=(8, 6))
+    gs  = fig.add_gridspec(2, 1,
+                           height_ratios=[0.1, 0.9],
+                           hspace=0.02)
+
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[0, 0])
+    ax_leg.axis('off')
+    handles = [
+        patches.Patch(color=color_map[r], label=RELEVANCE_DICT[r])
+        for r in relevance_list
+    ]
+    ax_leg.legend(handles=handles,
+                  loc='center',
+                  ncol=n_rel,
+                  frameon=False,
+                  fontsize=15)
+
+    # — bar plot row —
+    ax = fig.add_subplot(gs[1, 0])
+
+    for i, rel in enumerate(relevance_list):
+        y_pos = y + (i - (n_rel - 1) / 2) * bar_h
+        ax.barh(
+            y_pos,
+            data[:, i],
+            height=bar_h,
+            color=color_map[rel],
+            edgecolor='none'
+        )
+
+    # style the bar plot
+    ax.axvline(0, color='gray', linestyle='--', lw=0.8)
+    ax.set_yticks(y)
+    ax.set_yticklabels(models, fontsize=15)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel, fontsize=15)
+    # ax.set_title(title, fontsize=14)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.grid(which='both', axis='x', linestyle='--', alpha=0.3)
+
+    # ─── save & optionally show ────────────────────────────────────────────────
+    plt.tight_layout(rect=[0, 0, 1, 1])
+    plt.savefig(
+        os.path.join(hbar_path, f"{title.replace(' ', '_')}.pdf"),
+        bbox_inches='tight',
+        pad_inches=0.1
+    )
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
 def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False):
     """
     Matrix: (models x methods)
     """
     hbar_path = os.path.join("results/mcq_results/stats", "metric_hbarplot")
     os.makedirs(hbar_path, exist_ok=True)
-    # # Set up the matplotlib figure
-    # n_models, n_methods = matrix.shape
-    # y = np.arange(n_models)
-
-    # # pick colormap
-    # cmap = cm.Blues
-    # colors = cmap(np.linspace(0.2, 1, n_methods))
-    # color_mapping = dict(zip(methods, colors))
-
-    # # compute bar height so groups span ~0.8 total
-    # bar_height = 0.8 / n_methods
-
-    # fig, ax = plt.subplots(figsize=(6, max(6, n_models)))
-    # # draw each method as a horizontal bar series
-    # for i, method in enumerate(methods):
-    #     # offset so the group is centered on each y tick
-    #     offset = (i - (n_methods - 1) / 2) * bar_height
-    #     ax.barh(
-    #         y + offset,
-    #         matrix[:, i],
-    #         height=bar_height,
-    #         label=method,
-    #         color=color_mapping[method]
-    #     )
-
-    # # styling
-    # ax.set_yticks(y)
-    # ax.set_yticklabels(models)
-    # ax.set_xlabel(xlabel)
-    # ax.set_ylabel(ylabel)
-    # ax.set_title(title)
-    # ax.axvline(0, color="gray", linestyle="--", linewidth=0.8)
-    # ax.legend()
-
-    # # remove spines if you like (optional)
-    # for spine in ax.spines.values():
-    #     spine.set_visible(False)
 
     n_models  = len(models)
     n_methods = len(methods)
@@ -950,9 +1085,9 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
 
         # ax.set_xlim(0.0, 75.0)
 
-        # ax.set_xlabel(xl)
         # x-label on each subplot
         ax.set_xlabel(sub_title, fontsize=15)
+        ax.invert_yaxis()
 
         # tidy up
         for spine in ax.spines.values():
