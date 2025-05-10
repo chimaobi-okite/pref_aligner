@@ -616,14 +616,38 @@ def PVR(chunk, is_irrelevant=False):
     pvr = 1 - intersection / union
     return pvr
 
+def NoPrefInvalid(chunk, is_irrelevant=False):
+    """
+    Computes the percentage of nopref answer that is not -1
+    """
+    return (chunk['nopref_answer']=='-1').mean()
+
+def PrefInvalid(chunk, is_irrelevant=False):
+    """
+    Computes the percentage of pref answer that is not -1
+    """
+    return (chunk['pref_answer']=='-1').mean()
+
+def MCValidDrop(chunk, is_irrelevant=False):
+    """
+    Computes nopref_succ = 1-(chunk["nopref_answer] == -1)/len(chunk)
+    and compares with pref_succ = 1-(chunk["nopref_answer"]==-1)/len(chunk)
+    returns pref_succ - nopref_succ
+    """
+    # Compute the number of correct answers
+    no_pref_chunk = 1 - (chunk['nopref_answer']=='-1').mean()
+    pref_chunk = 1 - (chunk['pref_answer']=='-1').mean()
+    return pref_chunk - no_pref_chunk
+
+
 def compute_metrics(results_dict, verbose=False):
     for k, df in results_dict.items(
         field="df",
     ):
         (relevance, method, model, dataset, _) = k
         for name, func in zip(
-            ["BR", "RER", "AFR", "PVR"],
-            [BR, RER, AFR, PVR],
+            ["BR", "RER", "AFR", "PVR", "NoPrefInvalid", "PrefInvalid", "MCValidDrop"],
+            [BR, RER, AFR, PVR, NoPrefInvalid, PrefInvalid, MCValidDrop],
         ):
             percentage = func(df, is_irrelevant=(relevance=='irrelevant')) * 100. if df is not None else None
             results_dict.add(
@@ -793,7 +817,7 @@ def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
     )
 
     # make room at the bottom for that legend
-    plt.tight_layout(rect=[0, -0.1, 1, 1])
+    plt.tight_layout(rect=[0, 0, 1, 1])
 
     plt.savefig(os.path.join(scatter_plot_path, title.replace(" ", "_") + ".pdf"))
     if show:
@@ -1017,15 +1041,17 @@ def relevance_hbarplot(
     else:
         plt.close()
 
-def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False):
+
+def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False):
     """
     Matrix: (models x methods)
     """
-    hbar_path = os.path.join("results/mcq_results/stats", "metric_hbarplot")
+    hbar_path = os.path.join("results/mcq_results/stats", "method_hbarplot")
     os.makedirs(hbar_path, exist_ok=True)
 
     n_models  = len(models)
     n_methods = len(methods)
+    n_metrics = len(matrices)
     y = np.arange(n_models)
     bar_h = 0.8 / n_methods
 
@@ -1040,8 +1066,6 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                           height_ratios=[0.1, 1, 1],
                           hspace=0.2, wspace=0.2)
 
-    # fig.suptitle(title, fontsize=16, y=0.95)
-    
     # — legend row —
     ax_leg = fig.add_subplot(gs[0, :])
     ax_leg.axis('off')
@@ -1052,7 +1076,7 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                   frameon=False,
                   fontsize=15)
 
-    # — the 2×2 bar plots —
+    # — the 2×2 bar plots (we’ll drop extras below) —
     axs = [
         fig.add_subplot(gs[1, 0]),
         fig.add_subplot(gs[1, 1]),
@@ -1060,8 +1084,8 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
         fig.add_subplot(gs[2, 1]),
     ]
 
+    # plot only as many as we have matrices
     for ax, mat, sub_title in zip(axs, matrices, subplot_titles):
-        # grouped horizontal bars
         for i, m in enumerate(methods):
             off = (i - (n_methods - 1) / 2) * bar_h
             ax.barh(
@@ -1071,30 +1095,218 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                 color=color_map[m],
                 edgecolor='none'
             )
-
-        # center line
         ax.axvline(0, color='gray', linestyle='--', lw=0.8)
-
-        # y‐labels only on left column
         if ax in (axs[0], axs[2]):
             ax.set_yticks(y)
             ax.set_yticklabels(models, fontsize=15)
         else:
             ax.set_yticks(y)
             ax.set_yticklabels([])
-
-        # ax.set_xlim(0.0, 75.0)
-
-        # x-label on each subplot
-        ax.set_xlabel(sub_title, fontsize=15)
+        ax.set_xlabel(METRIC_LABELS[sub_title], fontsize=15)
         ax.invert_yaxis()
-
-        # tidy up
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    # plt.tight_layout()
-    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"))
+    # remove any unused axes (e.g. the 4th when n_metrics == 3)
+    for ax in axs[n_metrics:]:
+        fig.delaxes(ax)
+
+    # if odd number of metrics, center the last one in its row
+    if n_metrics % 2 == 1:
+        last_ax = axs[n_metrics - 1]
+        ax_box = last_ax.get_position()
+        ax_width = ax_box.width
+        new_left = 0.5 - (ax_width / 2)
+        last_ax.set_position([new_left, ax_box.y0, ax_width, ax_box.height])
+
+    # optional super-title
+    # fig.suptitle(title, fontsize=16, y=0.95)
+
+    # save/show
+    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"),
+                format='pdf', bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+def missing_answer_hbarplot(data, keys, title, xlabel, show=False):
+    """
+    data: 2×N array, data[0]=low values, data[1]=high values
+    keys: length-N list of labels
+    """
+    hbar_path = os.path.join("results/mcq_results/stats", "missing_ans_hbarplot")
+    os.makedirs(hbar_path, exist_ok=True)
+
+    # extract & sort by high
+    low  = data[0, :]
+    high = data[1, :]
+    order = np.argsort(high)
+    low   = low[order]
+    high  = high[order]
+    labels = [MODELS_SHORT_DICT[keys[i]] for i in order]
+
+    n = len(labels)
+    y = np.arange(n)
+
+    full_h = 0.8
+    top_h  = 0.5
+
+    # normalize for coloring
+    def norm(vals):
+        vmin, vmax = vals.min(), vals.max()
+        return 0.3 + (vals - vmin) / (vmax - vmin + 1e-8) / 2
+
+    low_colors  = cm.PuBu(norm(low))
+    high_colors = cm.YlOrRd(norm(high))
+
+    # each bar is half of a 0.8 total group height
+    bar_h = 0.8 / 2
+    # with inverted y-axis, positive offsets move bars downward,
+    # so negative offset for low to place it above the group center
+    offset_low  = -bar_h / 2
+    offset_high =  bar_h / 2
+
+    # ── figure with two rows: [bars] + [custom legend] ──
+    fig = plt.figure(figsize=(6, 0.8 * n + 2))
+    gs  = fig.add_gridspec(2, 1,
+                           height_ratios=[n, 1],
+                           hspace=0.3)
+
+    # ---- main bar chart ----
+    ax = fig.add_subplot(gs[0, 0])
+    # high bar below the center
+    ax.barh(y + offset_high, high, height=bar_h,
+            color=high_colors, edgecolor='none')
+    # low bar above the center
+    ax.barh(y + offset_low, low, height=bar_h,
+            color=low_colors, edgecolor='none')
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel)
+    ax.set_title(title)
+
+    ax.set_axisbelow(True)
+    ax.grid(axis='x', which='major', linestyle='--',
+            linewidth=0.5, color='gray', alpha=0.3)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.spines['left'].set_visible(True)
+
+    # ── custom two-row legend in row 1 ──
+    ax_leg = fig.add_subplot(gs[1, 0])
+    ax_leg.axis('off')
+
+    # create a 1×256 gradient for reuse
+    grad = np.linspace(0, 1, 256).reshape(1, -1)
+
+    # low-pref legend box + caption
+    cb_low = inset_axes(ax_leg,
+        width="20%", height="30%",
+        loc='upper left',
+        bbox_to_anchor=(0.05, 0.55, 1, 1),
+        bbox_transform=ax_leg.transAxes)
+    cb_low.imshow(grad, aspect='auto', cmap=cm.PuBu)
+    cb_low.axis('off')
+    ax_leg.text(0.30, 0.65, 'Failure % with Preferences',
+                va='center', ha='left', transform=ax_leg.transAxes)
+
+    # high-pref legend box + caption
+    cb_high = inset_axes(ax_leg,
+        width="20%", height="30%",
+        loc='upper left',
+        bbox_to_anchor=(0.05, 0.10, 1, 1),
+        bbox_transform=ax_leg.transAxes)
+    cb_high.imshow(grad, aspect='auto', cmap=cm.YlOrRd)
+    cb_high.axis('off')
+    ax_leg.text(0.30, 1.2, 'Failure % without Preferences',
+                va='center', ha='left', transform=ax_leg.transAxes)
+
+    plt.tight_layout()
+
+    # save/show
+    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"),
+                format='pdf', bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def missing_answer_diffplot(data, keys, title, xlabel, show=False):
+    """
+    Plot (high - low) for each key, sorted by that difference.
+    Uses a viridis colormap and shows a zero line for negative/positive.
+    
+    data:  2×N array, data[0]=low values, data[1]=high values
+    keys:  length-N list of labels
+    """
+    # prepare output directory
+    hbar_path = os.path.join("results/mcq_results/stats", "missing_ans_diffplot")
+    os.makedirs(hbar_path, exist_ok=True)
+
+    # unpack & compute difference
+    low  = data[0, :]
+    high = data[1, :]
+    diff = (high - low) / low * 100
+
+    # sort by diff
+    order = np.argsort(diff)
+    diff   = diff[order]
+    labels = [MODELS_SHORT_DICT[keys[i]] for i in order]
+
+    # positions
+    n = len(labels)
+    y = np.arange(n)
+
+    # normalize diff for colormap
+    cmap = cm.plasma
+    norm = mcolors.Normalize(vmin=diff.min(), vmax=diff.max())
+    colors = cmap(norm(diff))
+
+    # create figure & axis
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    # horizontal bars
+    ax.barh(y, diff, height=0.8, color=colors, edgecolor='none')
+
+    # zero reference line
+    ax.axvline(0, color='gray', linestyle='--', lw=0.8)
+
+    # labels & styling
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel)
+    ax.set_title(title)
+
+    # grid behind bars
+    ax.set_axisbelow(True)
+    ax.grid(axis='x', which='major',
+            linestyle='--', linewidth=0.5,
+            color='gray', alpha=0.3)
+
+    # remove frame
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # add a horizontal colorbar for the diff scale
+    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax,
+                        orientation='horizontal',
+                        pad=0.15,
+                        fraction=0.05)
+    cbar.set_label('Low - High (Percentage)', fontsize=12)
+
+    plt.tight_layout()
+
+    # save or show
+    out_file = os.path.join(hbar_path, title.replace(" ", "_") + ".pdf")
+    plt.savefig(out_file, format='pdf', bbox_inches='tight', dpi=600)
     if show:
         plt.show()
     else:
