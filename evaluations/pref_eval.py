@@ -19,10 +19,15 @@ def run_pref_eval(df_path: str):
     
     print(f"Model running on is {df_path}")
     
-    if 'nopref_res' not in df.columns and 'no_pref_res' not in df.columns:
+    if any(x in df_path.lower() for x in ['irrelevant', 'cot', 'icl', 'self_critic']):
         print("doing the right thing")
         df_path = get_full_df(df_path = df_path)
         df = pd.read_csv(df_path)
+    
+    # if 'nopref_res' not in df.columns or 'no_pref_res' not in df.columns:
+    #     print("doing the right thing")
+    #     df_path = get_full_df(df_path = df_path)
+    #     df = pd.read_csv(df_path)
 
     # df = df[:5]
     explanations = []
@@ -68,6 +73,7 @@ def run_pref_eval(df_path: str):
     df['followed_pref'] = df['pref_eval_rating'] >= 3
     df['is_robust'] = (df['pref_correct'] & df['followed_pref'])
     save_evaluation(df, df_path=df_path)
+    print(df[['question', 'nopref_res', 'nopref_answer', 'pref_answer']].isnull().sum())
     return df
 
 def main(df_path:str):

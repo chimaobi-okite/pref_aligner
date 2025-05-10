@@ -21,12 +21,12 @@ nvidia-smi
 # PROMPT_METHOD="direct" # Options: "icl" or "cot" or "direct" or "self_critic"
 PROMPT_METHOD="direct"
 ENABLE_THINKING=1
-PREF_TYPE="irrelevant_set"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
-# PREF_TYPE="relevant" 
-MODEL_PATH="google/gemma-2-9b-it"
+# PREF_TYPE="irrelevant_set"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
+PREF_TYPE="relevant" 
+# MODEL_PATH="google/gemma-2-9b-it"
 # MODEL_PATH="deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free"
 # MODEL_PATH="Qwen/Qwen3-8B"
-# MODEL_PATH="Qwen/Qwen3-32B"
+MODEL_PATH="Qwen/Qwen3-32B"
 
 CHUNK_SIZE=5
 
@@ -37,8 +37,8 @@ python -m evaluations.full_main \
     --pref_type=$PREF_TYPE \
     --prompt_method=$PROMPT_METHOD \
     --enable_thinking=$ENABLE_THINKING \
-    # --chunk=1 \
-    # --chunk_size=$CHUNK_SIZE \
+    --chunk=1 \
+    --chunk_size=$CHUNK_SIZE \
 
 
 # Data = 

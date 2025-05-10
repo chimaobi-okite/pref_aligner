@@ -13,22 +13,28 @@ source venv/bin/activate
 
 # List of data paths
 DATA_PATHS=(
-    # "results/mcq_results/irrelevant/direct/full/janus-7b.csv"
-    # "results/mcq_results/irrelevant/direct/full/Llama-3.1-8B-Instruct.csv"
+    "results/mcq_results/irrelevant/direct/full/janus-7b.csv"
+    "results/mcq_results/irrelevant/direct/full/Llama-3.1-8B-Instruct.csv"
 
-    # "results/mcq_results/irrelevant/direct/full/Mistral-7B-Instruct-v0.3.csv"
-    # "results/mcq_results/irrelevant/direct/full/Mixtral-8x7B-Instruct-v0.1.csv"
+    "results/mcq_results/irrelevant/direct/full/gemma-2-9b-it.csv"
+    "results/mcq_results/irrelevant/direct/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
 
-    "results/mcq_results/relevant/direct/full/gemma-2-9b-it.csv"
-    "results/mcq_results/relevant/direct/full/gemma-2-27b-it.csv"
-    "results/mcq_results/relevant/direct/full/DeepSeek-R1-Distill-Llama-70B-free.csv"
-    "results/mcq_results/relevant/direct/full/Qwen3-8B_thinking.csv"
-    "results/mcq_results/relevant/direct/full/Qwen3-8B.csv"
-    "results/mcq_results/relevant/direct/full/Qwen3-32B.csv"
+    "results/mcq_results/irrelevant/direct/full/Mistral-7B-Instruct-v0.3.csv"
+    "results/mcq_results/irrelevant/direct/full/Mixtral-8x7B-Instruct-v0.1.csv"
+
+    "results/mcq_results/irrelevant_set/direct/full/gemma-2-9b-it.csv"
+    "results/mcq_results/irrelevant_set/direct/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
+
+    # "results/mcq_results/relevant/direct/full/gemma-2-9b-it.csv"
+    # "results/mcq_results/relevant/direct/full/gemma-2-27b-it.csv"
+    # "results/mcq_results/relevant/direct/full/DeepSeek-R1-Distill-Llama-70B-free.csv"
+    # "results/mcq_results/relevant/direct/full/Qwen3-8B_thinking.csv"
+    # "results/mcq_results/relevant/direct/full/Qwen3-8B.csv"
+    # "results/mcq_results/relevant/direct/full/Qwen3-32B.csv"
 
     "results/mcq_results/relevant/self_critic/full/Llama-3.1-8B-Instruct.csv"
     "results/mcq_results/relevant/self_critic/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
-    "results/mcq_results/relevant/self_critic/full/Mistral-7B-Instruct-v0.3.csv"
+    # "results/mcq_results/relevant/self_critic/full/Mistral-7B-Instruct-v0.3.csv"
     "results/mcq_results/relevant/self_critic/full/Mixtral-8x7B-Instruct-v0.1.csv"
 
     # "results/mcq_results/relevant/cot/full/Llama-3.3-70B-Instruct-Turbo-Free_7208_-0.0012486126526082275_0.9424237200482676.csv"

@@ -115,7 +115,7 @@ def full_pref_qa_task(model_path, pref_type, prompt_method,enable_thinking,
     print(f"Thinking Model: {enable_thinking}")
     print(f"Running: {model_path}, {prompt_method}, {pref_type}")
     
-    BATCH_SIZE = 8
+    BATCH_SIZE = 1
     is_janus = False
     is_qwen = False
     is_client_model = False

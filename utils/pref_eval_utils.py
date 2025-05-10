@@ -113,7 +113,8 @@ def preprocess_df_for_pref_eval(df_path:str,
     df = pd.read_csv(df_path)
     columns_to_rename = {
     'no_pref_ans': 'nopref_answer',
-    'pref_ans': 'pref_answer'
+    'pref_ans': 'pref_answer',
+    'no_pref_res': 'nopref_res',
     }
 
     # rename columns if necessary 
@@ -173,6 +174,13 @@ def get_full_df(df_path: str):
     df_irrel.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df_irrel.columns}, inplace=True)
     df_relevant.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df_relevant.columns}, inplace=True)
     
+    # print("df_irrel columns:", df_irrel.columns)
+    # print("df_relevant columns:", df_relevant.columns)
+    
+    cols_to_drop = ['nopref_res', 'nopref_answer']
+    df_irrel = df_irrel.drop(columns=[col for col in cols_to_drop if col in df_irrel.columns])
+    
+
     df_relevant = df_relevant.drop_duplicates(subset='question')
     
     initial_nopref_acc = len(df_relevant[df_relevant['nopref_answer'] == df_relevant['gold_option']])/len(df_relevant)
@@ -185,6 +193,9 @@ def get_full_df(df_path: str):
         on='question',
         how='left'
     )
+    
+    # print("df_merged columns:", df_merged.columns)
+
     
     merged_nopref_acc = len(df_merged[df_merged['nopref_answer'] == df_merged['gold_option']])/len(df_merged)
     merged_pref_acc = len(df_merged[df_merged['pref_answer'] == df_merged['gold_option']])/len(df_merged)

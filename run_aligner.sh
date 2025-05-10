@@ -17,8 +17,8 @@ nvidia-smi
 # DF_PATH="results/mcq_results/relevant/direct/full/Mistral-7B-Instruct-v0.3-direct-full.csv"
 # MODEL_PATH="mistralai/Mistral-7B-Instruct-v0.3"
 
-# DF_PATH="results/mcq_results/relevant/direct/full/Mixtral-8x7B-Instruct-v0.1-direct-full.csv"
-# MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1"
+DF_PATH="results/mcq_results/relevant/direct/full/Mixtral-8x7B-Instruct-v0.1-direct-full.csv"
+MODEL_PATH="mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 # DF_PATH="results/mcq_results/relevant/direct/full/Llama-3.1-8B-Instruct-direct-full.csv"
 # MODEL_PATH="meta-llama/Llama-3.1-8B-Instruct"
@@ -34,7 +34,7 @@ nvidia-smi
 
 
 
-PREF_TYPE="relevant"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
+PREF_TYPE="irrelevant_set"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
 
 # Run job for the assigned chunk
 CUDA_LAUNCH_BLOCKING=1 
