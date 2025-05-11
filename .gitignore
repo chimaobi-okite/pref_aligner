@@ -10,3 +10,5 @@ full_mcq_task_2.py
 **.DS_Store
 results/mcq_results/relevant/direct/mmlu/Mixtral-8x7B-Instruct-v0.1_0.8259680822609884_final.csv
 results/mcq_results/relevant/direct/mmlu/Mixtral-8x7B-Instruct-v0.1_0.8259680822609884_final.csv
+
+/Users/danielhou/Code/pref_aligner/results/mcq_results/relevant/cot/mmlu/Janus-7b.csv

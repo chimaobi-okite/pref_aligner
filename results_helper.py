@@ -1,3 +1,4 @@
+from functools import partial
 import os
 import glob
 import itertools
@@ -115,6 +116,18 @@ DATASET_PREFERENCES = {
   "commonsense_qa": CQA_PREFS,
   "mmlu": MMLU_PREFS,
   "truthful_qa": TQA_PREFS,
+}
+
+CQA_PREF_DICT = {s[:30]:i for i, s in enumerate(CQA_PREFS.values())}
+MMLU_PREF_DICT = {s[:30]:i for i, s in enumerate(MMLU_PREFS.values())}
+TQA_PREF_DICT = {s[:30]:i for i, s in enumerate(TQA_PREFS.values())}
+PREF_DICTS = {
+    "tau/commonsense_qa": CQA_PREF_DICT,
+    "cais/mmlu": MMLU_PREF_DICT,
+    "truthfulqa/truthful_qa": TQA_PREF_DICT,
+    "commonsense_qa": CQA_PREF_DICT,
+    "mmlu": MMLU_PREF_DICT,
+    "truthful_qa": TQA_PREF_DICT,
 }
 
 METRICS = ["BR", "RER", "AFR", "PVR"]
@@ -1249,9 +1262,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, show=False):
     os.makedirs(hbar_path, exist_ok=True)
 
     # unpack & compute difference
-    low  = data[0, :]
-    high = data[1, :]
-    diff = (high - low) / low * 100
+    diff = data
 
     # sort by diff
     order = np.argsort(diff)
@@ -1311,3 +1322,138 @@ def missing_answer_diffplot(data, keys, title, xlabel, show=False):
         plt.show()
     else:
         plt.close()
+
+
+def plot_paired_violin(data_left, 
+                       data_right, 
+                       labels,
+                       title, 
+                       color_left=mcolors.CSS4_COLORS["limegreen"],
+                       color_right=mcolors.CSS4_COLORS["cyan"],
+                       bw_method=0.3,         # smoothness of the KDE
+                       width=0.4,             # total width per pair
+                       alpha=0.7):
+    """
+    data_left, data_right : list of 1D arrays, each of length N
+    labels                : list of N category names
+    """
+    N = len(labels)
+    positions = np.arange(N)
+
+    fig, ax = plt.subplots(figsize=(2*N, 6))
+    half = width / 2
+    
+    # Left violins
+    vp1 = ax.violinplot(
+        data_left,
+        positions=positions - half,
+        widths=width,
+        showextrema=False,
+        bw_method=bw_method
+    )
+    # Right violins
+    vp2 = ax.violinplot(
+        data_right,
+        positions=positions + half,
+        widths=width,
+        showextrema=False,
+        bw_method=bw_method
+    )
+
+    # style them
+    for pc in vp1['bodies']:
+        pc.set_facecolor(color_left)
+        pc.set_edgecolor('black')
+        pc.set_alpha(alpha)
+    for pc in vp2['bodies']:
+        pc.set_facecolor(color_right)
+        pc.set_edgecolor('black')
+        pc.set_alpha(alpha)
+
+    # X ticks and labels
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, fontsize=14)
+
+    # Axis labels
+    ax.set_ylabel('Correctness %', fontsize=14)
+    ax.set_title(title, fontsize=16)
+
+    # legend
+    left_patch  = plt.Line2D([0],[0], color=color_left,  lw=10, alpha=alpha)
+    right_patch = plt.Line2D([0],[0], color=color_right, lw=10, alpha=alpha)
+    ax.legend([left_patch, right_patch],
+              ['Aligned Models', 'Misaligned Models'],
+              loc='upper right',
+              frameon=False,
+              fontsize=12)
+
+    ax.grid(axis='y', color='lightgrey', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
+    return fig, ax
+
+
+def compare_profile_accuracy(
+    model_name,
+    indiv_dataset_paths,
+    results_dict,
+    show=False,
+):
+    acc_full = []
+    acc_sampled = []
+    assert len(indiv_dataset_paths) == len(DATASETS), "Dataset paths must match datasets"
+    for dataset, fpath in zip(DATASETS, indiv_dataset_paths):
+        path = os.path.join("results/mcq_results/relevant/direct", dataset, fpath)
+        if not os.path.exists(path):
+            assert False, f"Warning: No file found for {dataset} at {path}"
+        df = pd.read_csv(path)
+        # all_pref_dfs[dataset] = df
+
+        # Compute full accuracy
+        pref_acc_dict_full = {}
+        i = 1
+        soln = df["gold_option"]
+        while f"profile_{i}_answer" in df.columns:
+            prof_answer = df[f"profile_{i}_answer"]
+            # Compute the accuracy
+            accuracy = (soln == prof_answer).mean()
+            pref_acc_dict_full[i] = accuracy
+            i += 1
+
+        # Get partial
+        partial_df = results_dict.get(
+            field="df",
+            relevance="relevant",
+            method="direct",
+            model=model_name,
+            dataset=dataset,
+        )
+        assert len(partial_df) == 1
+        partial_df = list(partial_df.values())[0]
+        
+        pref_acc_dict_sampled = {}
+        # Retrieve chunks for each profile
+        for i in pref_acc_dict_full.keys():
+            profile_set = DATASET_PREFERENCES[dataset]
+            profile = profile_set[i]
+            profile_chunk = partial_df[partial_df["preference"] == profile]
+            # Get the profile answer
+            accuracy = profile_chunk["pref_correct"].mean()
+            pref_acc_dict_sampled[i] = accuracy
+
+        # Aggregate results
+        full_arr = np.array([val for val in pref_acc_dict_full.values()])
+        acc_full.append(full_arr)
+        print("here")
+        print(pref_acc_dict_sampled.values())
+        partial_arr = np.array([val for val in pref_acc_dict_sampled.values()])
+        acc_sampled.append(partial_arr)
+        print("here")
+
+    plot_paired_violin(
+        acc_full,
+        acc_sampled,
+        DATASETS, 
+        title=f"Profile Accuracy for {model_name}",
+        # xlabel="Dataset",
+        # show=show
+    )
