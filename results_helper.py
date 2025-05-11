@@ -46,7 +46,13 @@ PROMPT_METHODS = [
     "cot",
     "icl",
     "self_critic",
-    # "aligner"
+    "aligner"
+]
+PROMPT_METHODS_WITHOUT_ALIGNER = [
+    "direct",
+    "cot",
+    "icl",
+    "self_critic"
 ]
 
 # List of models (as provided)
@@ -92,6 +98,12 @@ DATASETS_FULL = [
 ]
 # Process dataset names
 DATASETS = [dataset.split("/")[-1] for dataset in DATASETS_FULL]
+
+DATASET_SHORT_DICT = {
+    "commonsense_qa": "CQA",
+    "mmlu": "MMLU",
+    "truthful_qa": "TQA",
+}
 
 DATASET_LENS = {
     "commonsense_qa": 1221,
@@ -1143,113 +1155,8 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
     else:
         plt.close()
 
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-def missing_answer_hbarplot(data, keys, title, xlabel, show=False):
-    """
-    data: 2×N array, data[0]=low values, data[1]=high values
-    keys: length-N list of labels
-    """
-    hbar_path = os.path.join("results/mcq_results/stats", "missing_ans_hbarplot")
-    os.makedirs(hbar_path, exist_ok=True)
 
-    # extract & sort by high
-    low  = data[0, :]
-    high = data[1, :]
-    order = np.argsort(high)
-    low   = low[order]
-    high  = high[order]
-    labels = [MODELS_SHORT_DICT[keys[i]] for i in order]
-
-    n = len(labels)
-    y = np.arange(n)
-
-    full_h = 0.8
-    top_h  = 0.5
-
-    # normalize for coloring
-    def norm(vals):
-        vmin, vmax = vals.min(), vals.max()
-        return 0.3 + (vals - vmin) / (vmax - vmin + 1e-8) / 2
-
-    low_colors  = cm.PuBu(norm(low))
-    high_colors = cm.YlOrRd(norm(high))
-
-    # each bar is half of a 0.8 total group height
-    bar_h = 0.8 / 2
-    # with inverted y-axis, positive offsets move bars downward,
-    # so negative offset for low to place it above the group center
-    offset_low  = -bar_h / 2
-    offset_high =  bar_h / 2
-
-    # ── figure with two rows: [bars] + [custom legend] ──
-    fig = plt.figure(figsize=(6, 0.8 * n + 2))
-    gs  = fig.add_gridspec(2, 1,
-                           height_ratios=[n, 1],
-                           hspace=0.3)
-
-    # ---- main bar chart ----
-    ax = fig.add_subplot(gs[0, 0])
-    # high bar below the center
-    ax.barh(y + offset_high, high, height=bar_h,
-            color=high_colors, edgecolor='none')
-    # low bar above the center
-    ax.barh(y + offset_low, low, height=bar_h,
-            color=low_colors, edgecolor='none')
-
-    ax.set_yticks(y)
-    ax.set_yticklabels(labels)
-    ax.invert_yaxis()
-    ax.set_xlabel(xlabel)
-    ax.set_title(title)
-
-    ax.set_axisbelow(True)
-    ax.grid(axis='x', which='major', linestyle='--',
-            linewidth=0.5, color='gray', alpha=0.3)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-    ax.spines['left'].set_visible(True)
-
-    # ── custom two-row legend in row 1 ──
-    ax_leg = fig.add_subplot(gs[1, 0])
-    ax_leg.axis('off')
-
-    # create a 1×256 gradient for reuse
-    grad = np.linspace(0, 1, 256).reshape(1, -1)
-
-    # low-pref legend box + caption
-    cb_low = inset_axes(ax_leg,
-        width="20%", height="30%",
-        loc='upper left',
-        bbox_to_anchor=(0.05, 0.55, 1, 1),
-        bbox_transform=ax_leg.transAxes)
-    cb_low.imshow(grad, aspect='auto', cmap=cm.PuBu)
-    cb_low.axis('off')
-    ax_leg.text(0.30, 0.65, 'Failure % with Preferences',
-                va='center', ha='left', transform=ax_leg.transAxes)
-
-    # high-pref legend box + caption
-    cb_high = inset_axes(ax_leg,
-        width="20%", height="30%",
-        loc='upper left',
-        bbox_to_anchor=(0.05, 0.10, 1, 1),
-        bbox_transform=ax_leg.transAxes)
-    cb_high.imshow(grad, aspect='auto', cmap=cm.YlOrRd)
-    cb_high.axis('off')
-    ax_leg.text(0.30, 1.2, 'Failure % without Preferences',
-                va='center', ha='left', transform=ax_leg.transAxes)
-
-    plt.tight_layout()
-
-    # save/show
-    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"),
-                format='pdf', bbox_inches='tight', dpi=600)
-    if show:
-        plt.show()
-    else:
-        plt.close()
-
-
-def missing_answer_diffplot(data, keys, title, xlabel, show=False):
+def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=False):
     """
     Plot (high - low) for each key, sorted by that difference.
     Uses a viridis colormap and shows a zero line for negative/positive.
@@ -1262,27 +1169,64 @@ def missing_answer_diffplot(data, keys, title, xlabel, show=False):
     os.makedirs(hbar_path, exist_ok=True)
 
     # unpack & compute difference
-    diff = data
+    data = np.asarray(data)
+    M, N = data.shape
 
     # sort by diff
-    order = np.argsort(diff)
-    diff   = diff[order]
+    # order = np.argsort(diff)
+    order = np.argsort(data.mean(axis=0))
+    data   = data[:, order]
     labels = [MODELS_SHORT_DICT[keys[i]] for i in order]
 
     # positions
     n = len(labels)
     y = np.arange(n)
 
-    # normalize diff for colormap
+    # normalize data for colormap
     cmap = cm.plasma
-    norm = mcolors.Normalize(vmin=diff.min(), vmax=diff.max())
-    colors = cmap(norm(diff))
+    norm = mcolors.Normalize(vmin=data.min(), vmax=data.max())
+    colors = cmap(norm(data))
+
+    # 2) Prepare series labels & colors
+    if colors is None:
+        cmap = plt.get_cmap('tab10')
+        colors = [cmap(i) for i in range(M)]
+
+    # 3) Bar geometry
+    y = np.arange(N)
+    total_height = 0.8
+    bar_h = total_height / M
+    # offsets so bars are centered around each y
+    offsets = np.linspace(
+        -total_height/2 + bar_h/2,
+         total_height/2 - bar_h/2,
+         M
+    )
 
     # create figure & axis
-    fig, ax = plt.subplots(figsize=(6, 6))
+    #fig, ax = plt.subplots(figsize=(6, 6))
 
     # horizontal bars
-    ax.barh(y, diff, height=0.8, color=colors, edgecolor='none')
+    # ax.barh(y, data, height=0.8, color=colors, edgecolor='none')
+    fig, ax = plt.subplots(figsize=(6 + M, max(6, N * 0.4)))
+    for m in range(M):
+        if series_labels is None:
+            ax.barh(
+                y + offsets[m],
+                data[m],
+                height=bar_h,
+                color=colors[m],
+                edgecolor='none'
+            )
+        else:
+            ax.barh(
+                y + offsets[m],
+                data[m],
+                height=bar_h,
+                color=colors[m],
+                label=series_labels[m],
+                edgecolor='none'
+            )
 
     # zero reference line
     ax.axvline(0, color='gray', linestyle='--', lw=0.8)
@@ -1304,7 +1248,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, show=False):
     for spine in ax.spines.values():
         spine.set_visible(False)
 
-    # add a horizontal colorbar for the diff scale
+    # add a horizontal colorbar for the data scale
     sm = cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     cbar = fig.colorbar(sm, ax=ax,
@@ -1324,72 +1268,119 @@ def missing_answer_diffplot(data, keys, title, xlabel, show=False):
         plt.close()
 
 
-def plot_paired_violin(data_left, 
-                       data_right, 
-                       labels,
-                       title, 
-                       color_left=mcolors.CSS4_COLORS["limegreen"],
-                       color_right=mcolors.CSS4_COLORS["cyan"],
-                       bw_method=0.3,         # smoothness of the KDE
-                       width=0.4,             # total width per pair
-                       alpha=0.7):
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde, norm
+
+def plot_paired_violin(
+    data_left,
+    data_right,
+    labels,
+    title=None,
+    color_left='#77b5d9',
+    color_right='#fb8634',
+    kind='violin',         # 'violin' or 'gaussian'
+    bw_method=0.3,
+    half_width=0.4,
+    alpha=0.7,
+    show=False,
+):
     """
-    data_left, data_right : list of 1D arrays, each of length N
+    Draw back-to-back half-violins.
+
+    data_left, data_right : list of 1D arrays, length N
     labels                : list of N category names
     """
+    # prepare output directory
+    violin_path = os.path.join("results/mcq_results/stats", "full_sample_acc_violin")
+    os.makedirs(violin_path, exist_ok=True)
+
     N = len(labels)
     positions = np.arange(N)
 
-    fig, ax = plt.subplots(figsize=(2*N, 6))
-    half = width / 2
-    
-    # Left violins
-    vp1 = ax.violinplot(
-        data_left,
-        positions=positions - half,
-        widths=width,
-        showextrema=False,
-        bw_method=bw_method
-    )
-    # Right violins
-    vp2 = ax.violinplot(
-        data_right,
-        positions=positions + half,
-        widths=width,
-        showextrema=False,
-        bw_method=bw_method
-    )
+    fig, ax = plt.subplots(figsize=(8, 6))
 
-    # style them
-    for pc in vp1['bodies']:
-        pc.set_facecolor(color_left)
-        pc.set_edgecolor('black')
-        pc.set_alpha(alpha)
-    for pc in vp2['bodies']:
-        pc.set_facecolor(color_right)
-        pc.set_edgecolor('black')
-        pc.set_alpha(alpha)
+    # find common y-limits so all violins share the same vertical span
+    all_data = np.concatenate(data_left + data_right)
+    y_min, y_max = all_data.min(), all_data.max()
+    y_vals = np.linspace(y_min, y_max, 200)
 
-    # X ticks and labels
+    for i, (dl, dr) in enumerate(zip(data_left, data_right)):
+        x0 = positions[i]
+
+        if kind == 'violin':
+            # KDE for left
+            kde_l = gaussian_kde(dl, bw_method=bw_method)
+            dens_l = kde_l(y_vals)
+            dens_l = dens_l / dens_l.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 - dens_l,
+                facecolor=color_left, alpha=alpha, linewidth=0
+            )
+            # KDE for right
+            kde_r = gaussian_kde(dr, bw_method=bw_method)
+            dens_r = kde_r(y_vals)
+            dens_r = dens_r / dens_r.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 + dens_r,
+                facecolor=color_right, alpha=alpha, linewidth=0
+            )
+
+        elif kind == 'gaussian':
+            # Fit Normal to left
+            mu_l, sigma_l = np.mean(dl), np.std(dl)
+            pdf_l = norm.pdf(y_vals, loc=mu_l, scale=sigma_l)
+            dens_l = pdf_l / pdf_l.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 - dens_l,
+                facecolor=color_left, alpha=alpha, linewidth=0
+            )
+            # Fit Normal to right
+            mu_r, sigma_r = np.mean(dr), np.std(dr)
+            pdf_r = norm.pdf(y_vals, loc=mu_r, scale=sigma_r)
+            dens_r = pdf_r / pdf_r.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 + dens_r,
+                facecolor=color_right, alpha=alpha, linewidth=0
+            )
+
+        else:
+            raise ValueError(f"Unknown kind: {kind!r}. Use 'violin' or 'gaussian'.")
+
+
+    # styling
     ax.set_xticks(positions)
-    ax.set_xticklabels(labels, fontsize=14)
-
-    # Axis labels
-    ax.set_ylabel('Correctness %', fontsize=14)
-    ax.set_title(title, fontsize=16)
+    ax.set_xticklabels(labels, fontsize=15)
+    ax.set_xlim(-1, N)  # give a bit of breathing room
+    ax.set_ylabel('Accuracy')
+    if title:
+        ax.set_title(title, fontsize=15)
 
     # legend
-    left_patch  = plt.Line2D([0],[0], color=color_left,  lw=10, alpha=alpha)
-    right_patch = plt.Line2D([0],[0], color=color_right, lw=10, alpha=alpha)
-    ax.legend([left_patch, right_patch],
-              ['Aligned Models', 'Misaligned Models'],
-              loc='upper right',
-              frameon=False,
-              fontsize=12)
+    left_patch  = plt.Line2D([0], [0], color=color_left,  lw=10, alpha=alpha)
+    right_patch = plt.Line2D([0], [0], color=color_right, lw=10, alpha=alpha)
+    ax.legend(
+        [left_patch, right_patch],
+        ['Full', 'Sampled'],
+        # loc='upper right',
+        frameon=False,
+        fontsize=15,
+    )
 
     ax.grid(axis='y', color='lightgrey', linestyle='--', linewidth=0.5)
     plt.tight_layout()
-    return fig, ax
+    
+    # save or show
+    out_file = os.path.join(violin_path, title.replace(" ", "_") + ".pdf")
+    plt.savefig(out_file, format='pdf', bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
 
 def compare_profile_accuracy(
@@ -1443,17 +1434,15 @@ def compare_profile_accuracy(
         # Aggregate results
         full_arr = np.array([val for val in pref_acc_dict_full.values()])
         acc_full.append(full_arr)
-        print("here")
-        print(pref_acc_dict_sampled.values())
         partial_arr = np.array([val for val in pref_acc_dict_sampled.values()])
         acc_sampled.append(partial_arr)
-        print("here")
 
     plot_paired_violin(
         acc_full,
         acc_sampled,
-        DATASETS, 
+        [DATASET_SHORT_DICT[n] for n in DATASETS], 
         title=f"Profile Accuracy for {model_name}",
         # xlabel="Dataset",
-        # show=show
+        show=show
     )
+
