@@ -1,3 +1,4 @@
+from functools import partial
 import os
 import glob
 import itertools
@@ -45,7 +46,13 @@ PROMPT_METHODS = [
     "cot",
     "icl",
     "self_critic",
-    # "aligner"
+    "aligner"
+]
+PROMPT_METHODS_WITHOUT_ALIGNER = [
+    "direct",
+    "cot",
+    "icl",
+    "self_critic"
 ]
 
 # List of models (as provided)
@@ -92,6 +99,12 @@ DATASETS_FULL = [
 # Process dataset names
 DATASETS = [dataset.split("/")[-1] for dataset in DATASETS_FULL]
 
+DATASET_SHORT_DICT = {
+    "commonsense_qa": "CQA",
+    "mmlu": "MMLU",
+    "truthful_qa": "TQA",
+}
+
 DATASET_LENS = {
     "commonsense_qa": 1221,
     "mmlu": 5170,
@@ -115,6 +128,18 @@ DATASET_PREFERENCES = {
   "commonsense_qa": CQA_PREFS,
   "mmlu": MMLU_PREFS,
   "truthful_qa": TQA_PREFS,
+}
+
+CQA_PREF_DICT = {s[:30]:i for i, s in enumerate(CQA_PREFS.values())}
+MMLU_PREF_DICT = {s[:30]:i for i, s in enumerate(MMLU_PREFS.values())}
+TQA_PREF_DICT = {s[:30]:i for i, s in enumerate(TQA_PREFS.values())}
+PREF_DICTS = {
+    "tau/commonsense_qa": CQA_PREF_DICT,
+    "cais/mmlu": MMLU_PREF_DICT,
+    "truthfulqa/truthful_qa": TQA_PREF_DICT,
+    "commonsense_qa": CQA_PREF_DICT,
+    "mmlu": MMLU_PREF_DICT,
+    "truthful_qa": TQA_PREF_DICT,
 }
 
 METRICS = ["BR", "RER", "AFR", "PVR"]
@@ -616,14 +641,38 @@ def PVR(chunk, is_irrelevant=False):
     pvr = 1 - intersection / union
     return pvr
 
+def NoPrefInvalid(chunk, is_irrelevant=False):
+    """
+    Computes the percentage of nopref answer that is not -1
+    """
+    return (chunk['nopref_answer']=='-1').mean()
+
+def PrefInvalid(chunk, is_irrelevant=False):
+    """
+    Computes the percentage of pref answer that is not -1
+    """
+    return (chunk['pref_answer']=='-1').mean()
+
+def MCValidDrop(chunk, is_irrelevant=False):
+    """
+    Computes nopref_succ = 1-(chunk["nopref_answer] == -1)/len(chunk)
+    and compares with pref_succ = 1-(chunk["nopref_answer"]==-1)/len(chunk)
+    returns pref_succ - nopref_succ
+    """
+    # Compute the number of correct answers
+    no_pref_chunk = 1 - (chunk['nopref_answer']=='-1').mean()
+    pref_chunk = 1 - (chunk['pref_answer']=='-1').mean()
+    return pref_chunk - no_pref_chunk
+
+
 def compute_metrics(results_dict, verbose=False):
     for k, df in results_dict.items(
         field="df",
     ):
         (relevance, method, model, dataset, _) = k
         for name, func in zip(
-            ["BR", "RER", "AFR", "PVR"],
-            [BR, RER, AFR, PVR],
+            ["BR", "RER", "AFR", "PVR", "NoPrefInvalid", "PrefInvalid", "MCValidDrop"],
+            [BR, RER, AFR, PVR, NoPrefInvalid, PrefInvalid, MCValidDrop],
         ):
             percentage = func(df, is_irrelevant=(relevance=='irrelevant')) * 100. if df is not None else None
             results_dict.add(
@@ -793,7 +842,7 @@ def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
     )
 
     # make room at the bottom for that legend
-    plt.tight_layout(rect=[0, -0.1, 1, 1])
+    plt.tight_layout(rect=[0, 0, 1, 1])
 
     plt.savefig(os.path.join(scatter_plot_path, title.replace(" ", "_") + ".pdf"))
     if show:
@@ -1017,15 +1066,17 @@ def relevance_hbarplot(
     else:
         plt.close()
 
-def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False):
+
+def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False):
     """
     Matrix: (models x methods)
     """
-    hbar_path = os.path.join("results/mcq_results/stats", "metric_hbarplot")
+    hbar_path = os.path.join("results/mcq_results/stats", "method_hbarplot")
     os.makedirs(hbar_path, exist_ok=True)
 
     n_models  = len(models)
     n_methods = len(methods)
+    n_metrics = len(matrices)
     y = np.arange(n_models)
     bar_h = 0.8 / n_methods
 
@@ -1040,8 +1091,6 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                           height_ratios=[0.1, 1, 1],
                           hspace=0.2, wspace=0.2)
 
-    # fig.suptitle(title, fontsize=16, y=0.95)
-    
     # — legend row —
     ax_leg = fig.add_subplot(gs[0, :])
     ax_leg.axis('off')
@@ -1052,7 +1101,7 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                   frameon=False,
                   fontsize=15)
 
-    # — the 2×2 bar plots —
+    # — the 2×2 bar plots (we’ll drop extras below) —
     axs = [
         fig.add_subplot(gs[1, 0]),
         fig.add_subplot(gs[1, 1]),
@@ -1060,8 +1109,8 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
         fig.add_subplot(gs[2, 1]),
     ]
 
+    # plot only as many as we have matrices
     for ax, mat, sub_title in zip(axs, matrices, subplot_titles):
-        # grouped horizontal bars
         for i, m in enumerate(methods):
             off = (i - (n_methods - 1) / 2) * bar_h
             ax.barh(
@@ -1071,31 +1120,329 @@ def metric_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                 color=color_map[m],
                 edgecolor='none'
             )
-
-        # center line
         ax.axvline(0, color='gray', linestyle='--', lw=0.8)
-
-        # y‐labels only on left column
         if ax in (axs[0], axs[2]):
             ax.set_yticks(y)
             ax.set_yticklabels(models, fontsize=15)
         else:
             ax.set_yticks(y)
             ax.set_yticklabels([])
-
-        # ax.set_xlim(0.0, 75.0)
-
-        # x-label on each subplot
-        ax.set_xlabel(sub_title, fontsize=15)
+        ax.set_xlabel(METRIC_LABELS[sub_title], fontsize=15)
         ax.invert_yaxis()
-
-        # tidy up
         for spine in ax.spines.values():
             spine.set_visible(False)
 
-    # plt.tight_layout()
-    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"))
+    # remove any unused axes (e.g. the 4th when n_metrics == 3)
+    for ax in axs[n_metrics:]:
+        fig.delaxes(ax)
+
+    # if odd number of metrics, center the last one in its row
+    if n_metrics % 2 == 1:
+        last_ax = axs[n_metrics - 1]
+        ax_box = last_ax.get_position()
+        ax_width = ax_box.width
+        new_left = 0.5 - (ax_width / 2)
+        last_ax.set_position([new_left, ax_box.y0, ax_width, ax_box.height])
+
+    # optional super-title
+    # fig.suptitle(title, fontsize=16, y=0.95)
+
+    # save/show
+    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"),
+                format='pdf', bbox_inches='tight', dpi=600)
     if show:
         plt.show()
     else:
         plt.close()
+
+
+def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=False):
+    """
+    Plot (high - low) for each key, sorted by that difference.
+    Uses a viridis colormap and shows a zero line for negative/positive.
+    
+    data:  2×N array, data[0]=low values, data[1]=high values
+    keys:  length-N list of labels
+    """
+    # prepare output directory
+    hbar_path = os.path.join("results/mcq_results/stats", "missing_ans_diffplot")
+    os.makedirs(hbar_path, exist_ok=True)
+
+    # unpack & compute difference
+    data = np.asarray(data)
+    M, N = data.shape
+
+    # sort by diff
+    # order = np.argsort(diff)
+    order = np.argsort(data.mean(axis=0))
+    data   = data[:, order]
+    labels = [MODELS_SHORT_DICT[keys[i]] for i in order]
+
+    # positions
+    n = len(labels)
+    y = np.arange(n)
+
+    # normalize data for colormap
+    cmap = cm.plasma
+    norm = mcolors.Normalize(vmin=data.min(), vmax=data.max())
+    colors = cmap(norm(data))
+
+    # 2) Prepare series labels & colors
+    if colors is None:
+        cmap = plt.get_cmap('tab10')
+        colors = [cmap(i) for i in range(M)]
+
+    # 3) Bar geometry
+    y = np.arange(N)
+    total_height = 0.8
+    bar_h = total_height / M
+    # offsets so bars are centered around each y
+    offsets = np.linspace(
+        -total_height/2 + bar_h/2,
+         total_height/2 - bar_h/2,
+         M
+    )
+
+    # create figure & axis
+    #fig, ax = plt.subplots(figsize=(6, 6))
+
+    # horizontal bars
+    # ax.barh(y, data, height=0.8, color=colors, edgecolor='none')
+    fig, ax = plt.subplots(figsize=(6 + M, max(6, N * 0.4)))
+    for m in range(M):
+        if series_labels is None:
+            ax.barh(
+                y + offsets[m],
+                data[m],
+                height=bar_h,
+                color=colors[m],
+                edgecolor='none'
+            )
+        else:
+            ax.barh(
+                y + offsets[m],
+                data[m],
+                height=bar_h,
+                color=colors[m],
+                label=series_labels[m],
+                edgecolor='none'
+            )
+
+    # zero reference line
+    ax.axvline(0, color='gray', linestyle='--', lw=0.8)
+
+    # labels & styling
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel)
+    ax.set_title(title)
+
+    # grid behind bars
+    ax.set_axisbelow(True)
+    ax.grid(axis='x', which='major',
+            linestyle='--', linewidth=0.5,
+            color='gray', alpha=0.3)
+
+    # remove frame
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # add a horizontal colorbar for the data scale
+    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax,
+                        orientation='horizontal',
+                        pad=0.15,
+                        fraction=0.05)
+    cbar.set_label('Low - High (Percentage)', fontsize=12)
+
+    plt.tight_layout()
+
+    # save or show
+    out_file = os.path.join(hbar_path, title.replace(" ", "_") + ".pdf")
+    plt.savefig(out_file, format='pdf', bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde, norm
+
+def plot_paired_violin(
+    data_left,
+    data_right,
+    labels,
+    title=None,
+    color_left='#77b5d9',
+    color_right='#fb8634',
+    kind='violin',         # 'violin' or 'gaussian'
+    bw_method=0.3,
+    half_width=0.4,
+    alpha=0.7,
+    show=False,
+):
+    """
+    Draw back-to-back half-violins.
+
+    data_left, data_right : list of 1D arrays, length N
+    labels                : list of N category names
+    """
+    # prepare output directory
+    violin_path = os.path.join("results/mcq_results/stats", "full_sample_acc_violin")
+    os.makedirs(violin_path, exist_ok=True)
+
+    N = len(labels)
+    positions = np.arange(N)
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # find common y-limits so all violins share the same vertical span
+    all_data = np.concatenate(data_left + data_right)
+    y_min, y_max = all_data.min(), all_data.max()
+    y_vals = np.linspace(y_min, y_max, 200)
+
+    for i, (dl, dr) in enumerate(zip(data_left, data_right)):
+        x0 = positions[i]
+
+        if kind == 'violin':
+            # KDE for left
+            kde_l = gaussian_kde(dl, bw_method=bw_method)
+            dens_l = kde_l(y_vals)
+            dens_l = dens_l / dens_l.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 - dens_l,
+                facecolor=color_left, alpha=alpha, linewidth=0
+            )
+            # KDE for right
+            kde_r = gaussian_kde(dr, bw_method=bw_method)
+            dens_r = kde_r(y_vals)
+            dens_r = dens_r / dens_r.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 + dens_r,
+                facecolor=color_right, alpha=alpha, linewidth=0
+            )
+
+        elif kind == 'gaussian':
+            # Fit Normal to left
+            mu_l, sigma_l = np.mean(dl), np.std(dl)
+            pdf_l = norm.pdf(y_vals, loc=mu_l, scale=sigma_l)
+            dens_l = pdf_l / pdf_l.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 - dens_l,
+                facecolor=color_left, alpha=alpha, linewidth=0
+            )
+            # Fit Normal to right
+            mu_r, sigma_r = np.mean(dr), np.std(dr)
+            pdf_r = norm.pdf(y_vals, loc=mu_r, scale=sigma_r)
+            dens_r = pdf_r / pdf_r.max() * half_width
+            ax.fill_betweenx(
+                y_vals,
+                x0, x0 + dens_r,
+                facecolor=color_right, alpha=alpha, linewidth=0
+            )
+
+        else:
+            raise ValueError(f"Unknown kind: {kind!r}. Use 'violin' or 'gaussian'.")
+
+
+    # styling
+    ax.set_xticks(positions)
+    ax.set_xticklabels(labels, fontsize=15)
+    ax.set_xlim(-1, N)  # give a bit of breathing room
+    ax.set_ylabel('Accuracy')
+    if title:
+        ax.set_title(title, fontsize=15)
+
+    # legend
+    left_patch  = plt.Line2D([0], [0], color=color_left,  lw=10, alpha=alpha)
+    right_patch = plt.Line2D([0], [0], color=color_right, lw=10, alpha=alpha)
+    ax.legend(
+        [left_patch, right_patch],
+        ['Full', 'Sampled'],
+        # loc='upper right',
+        frameon=False,
+        fontsize=15,
+    )
+
+    ax.grid(axis='y', color='lightgrey', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
+    
+    # save or show
+    out_file = os.path.join(violin_path, title.replace(" ", "_") + ".pdf")
+    plt.savefig(out_file, format='pdf', bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def compare_profile_accuracy(
+    model_name,
+    indiv_dataset_paths,
+    results_dict,
+    show=False,
+):
+    acc_full = []
+    acc_sampled = []
+    assert len(indiv_dataset_paths) == len(DATASETS), "Dataset paths must match datasets"
+    for dataset, fpath in zip(DATASETS, indiv_dataset_paths):
+        path = os.path.join("results/mcq_results/relevant/direct", dataset, fpath)
+        if not os.path.exists(path):
+            assert False, f"Warning: No file found for {dataset} at {path}"
+        df = pd.read_csv(path)
+        # all_pref_dfs[dataset] = df
+
+        # Compute full accuracy
+        pref_acc_dict_full = {}
+        i = 1
+        soln = df["gold_option"]
+        while f"profile_{i}_answer" in df.columns:
+            prof_answer = df[f"profile_{i}_answer"]
+            # Compute the accuracy
+            accuracy = (soln == prof_answer).mean()
+            pref_acc_dict_full[i] = accuracy
+            i += 1
+
+        # Get partial
+        partial_df = results_dict.get(
+            field="df",
+            relevance="relevant",
+            method="direct",
+            model=model_name,
+            dataset=dataset,
+        )
+        assert len(partial_df) == 1
+        partial_df = list(partial_df.values())[0]
+        
+        pref_acc_dict_sampled = {}
+        # Retrieve chunks for each profile
+        for i in pref_acc_dict_full.keys():
+            profile_set = DATASET_PREFERENCES[dataset]
+            profile = profile_set[i]
+            profile_chunk = partial_df[partial_df["preference"] == profile]
+            # Get the profile answer
+            accuracy = profile_chunk["pref_correct"].mean()
+            pref_acc_dict_sampled[i] = accuracy
+
+        # Aggregate results
+        full_arr = np.array([val for val in pref_acc_dict_full.values()])
+        acc_full.append(full_arr)
+        partial_arr = np.array([val for val in pref_acc_dict_sampled.values()])
+        acc_sampled.append(partial_arr)
+
+    plot_paired_violin(
+        acc_full,
+        acc_sampled,
+        [DATASET_SHORT_DICT[n] for n in DATASETS], 
+        title=f"Profile Accuracy for {model_name}",
+        # xlabel="Dataset",
+        show=show
+    )
+
