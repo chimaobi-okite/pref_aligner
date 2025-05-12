@@ -34,7 +34,7 @@ MODEL_PATH="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
 
 
 
-PREF_TYPE="irrelevant"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
+PREF_TYPE="irrelevant_set"       # Options: "relevant" or "irrelevant" or"irrelevant_set"
 
 # Run job for the assigned chunk
 CUDA_LAUNCH_BLOCKING=1 

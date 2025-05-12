@@ -23,10 +23,10 @@ def run_pref_eval(df_path: str):
     
     print(f"Model running on is {df_path}")
     
-    if any(x in df_path.lower() for x in ['irrelevant', 'cot', 'icl', 'self_critic']):
-        print("doing the right thing")
-        df_path = get_full_df(df_path = df_path)
-        df = pd.read_csv(df_path)
+    # if any(x in df_path.lower() for x in ['irrelevant', 'cot', 'icl', 'self_critic']):
+    #     print("doing the right thing")
+    #     df_path = get_full_df(df_path = df_path)
+    #     df = pd.read_csv(df_path)
     
     # if 'nopref_res' not in df.columns or 'no_pref_res' not in df.columns:
     #     print("doing the right thing")
