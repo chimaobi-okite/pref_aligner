@@ -1,7 +1,9 @@
+from calendar import c
 from functools import partial
 import os
 import glob
 import itertools
+from re import A
 from tkinter import font
 
 from matplotlib.font_manager import font_scalings
@@ -150,6 +152,13 @@ METRIC_LABELS = {
     "PVR": "Performance Variation Rate (PVR)",
 }
 
+METRIC_LABELS_ABBR = {
+    "BR": "BR",
+    "RER": "RER",
+    "AFR": "AFR",
+    "PVR": "PVR",
+}
+
 class MultiKeyDict:
     def __init__(self, keys, cat_keys={}):
         # Defaults to some custom keys and a field entry
@@ -213,6 +222,7 @@ class MultiKeyDict:
                         match = False
                         break
             if match:
+                # print("Adding", key)
                 results[key] = value
         return results
 
@@ -757,16 +767,16 @@ def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER",
                 "relevance": relevance,
                 "method": method,
                 "model": model,
+                # "dataset": "full",
             }, 
             axis_keys=["dataset"],
             fill_missing=0.0,
         )
+        # print(np.array(matr).shape, key_order)
+
         # print(key_order)
         repr = f"{MODELS_SHORT_DICT[model]}\t"
-        arr = np.zeros((len(matr)*len(matr[0])), dtype=np.float64)
-        for j in range(len(matr[0])):
-            for i in range(len(matr)):
-                arr[i*len(matr[0])+j] = matr[i][j]
+        arr = np.array(matr).T.flatten()
         if not np.allclose(arr, 0.0, 1e-4):
             arr_list.append(arr)
             ylabels.append(MODELS_SHORT_DICT[model])
@@ -794,7 +804,7 @@ def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
     os.makedirs(scatter_plot_path, exist_ok=True)
 
     # use the Viridis colormap instead of Blues
-    cross_colors = cm.viridis(np.linspace(0.2, 1, len(x)))
+    cross_colors = cm.plasma(np.linspace(0.0, 0.7, len(x)))
     fig, ax = plt.subplots(figsize=(8,8))
 
     keys = [key+f" ({str(int(s))}%)" for key, s in zip(keys, scores)]
@@ -802,8 +812,8 @@ def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
     for xi, yi, key, c in zip(x, y, keys, cross_colors):
         ax.scatter(
             xi, yi,
-            marker='x',
-            s=100,
+            marker='o',
+            s=60,
             color=c,
             linewidths=2,
             label=key
@@ -814,23 +824,23 @@ def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
         for i, (s, xi, yi) in enumerate(zip(scores, x, y)):
             if i == 9:
                 print("Modifying")
-                x_offset = xi + 0.08
+                x_offset = xi + 0.1
                 y_offset = yi - 0.8
             else:
-                x_offset = xi + 0.008
-                y_offset = yi + 0.010
+                x_offset = xi + 0.01
+                y_offset = yi + 0.02
             ax.text(
                 x_offset,
                 y_offset,
                 f"{str(int(s))}%",
-                fontsize=15,
+                fontsize=16,
                 va='bottom',
                 ha='left'
             )
 
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    ax.set_xlabel(xlabel, fontsize=18)
+    ax.set_ylabel(ylabel, fontsize=18)
+    # ax.set_title(title, fontsize=18)
     ax.grid(which='both', linestyle='--', alpha=0.5)
 
     # legend below the chart, centered, in 2 columns
@@ -871,81 +881,76 @@ def rel_irrel_backback_barplot(
     irr = np.array(irrel_results, dtype=float)
     assert rel.shape == irr.shape == (len(models),), "Lengths must match models"
 
-    # map [0,100] → [0.2,0.6]
-    # color_max = max(rel.max(), irr.max())
-    def scale_intensity(vals):
-        return 0.3 + (np.clip(vals, 10, 200) / 200)
-
-    rel_norm = scale_intensity(rel)
-    irr_norm = scale_intensity(irr)
-
-    # normalize to [0,1] for colormap
-    # norm = mcolors.Normalize(vmin=0, vmax=max_val)
-    # cmap = cm.PuBu
-
-    rel_colors = cm.Blues(rel_norm)
-    irr_colors = cm.Oranges(irr_norm)
+    # rel_colors = cm.Blues(rel_norm)
+    # irr_colors = cm.Oranges(irr_norm)
+    rel_color = cm.Blues([0.66])
+    irr_color = cm.Oranges([0.5])    # cm.Blues([0.7])
 
     n = len(models)
     y = np.arange(n)
 
     # compute padding for annotations and x-limits
-    pad = 1.0  # will be overridden after computing limits
-    max_val = max(rel.max(), irr.max(), 1.0)
-    pad = max_val * 0.02
-    left_lim  = -max_val - pad * 5
-    right_lim =  max_val + pad * 5
+    # pad = 1.0  # will be overridden after computing limits
+    # max_val = max(rel.max(), irr.max(), 1.0)
+    lpad = rel.max() * 0.02
+    rpad = irr.max() * 0.02
+    left_lim  = rel.max() * (-1.1) - 10
+    right_lim =  irr.max()
 
     # create directories
     rel_irrel_path = os.path.join("results/mcq_results/stats", "rel_irrel_barplot")
     os.makedirs(rel_irrel_path, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=(8, n * 0.5 + 1))
+    # set up figure + GridSpec
+    fig = plt.figure(constrained_layout=False, figsize=(6, 3))
+    gs = fig.add_gridspec(2, 1,
+                          height_ratios=[0.1, 1],
+                          hspace=0.2, wspace=0.1)
+
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[0, :])
+    ax_leg.axis('off')
+    handles = [patches.Patch(color=c, label=m) for c, m in zip([rel_color, irr_color], ["Relevant", "Mixed"])]
+    ax_leg.legend(handles=handles,
+                  loc='center',
+                  ncol=2,
+                  frameon=False,
+                  fontsize=15)
+
+    # — the 2×2 bar plots (we’ll drop extras below) —
+    ax = fig.add_subplot(gs[1, 0])
+
     # left (negative) bars
-    ax.barh(y, -rel, color=rel_colors, height=0.8)
+    ax.barh(y, -rel, color=rel_color, height=0.8)
     # right bars
-    ax.barh(y, irr, color=irr_colors, height=0.8)
+    ax.barh(y, irr, color=irr_color, height=0.8)
 
     # y-axis with model names on the left
     ax.set_yticks(y)
-    ax.set_yticklabels(models, fontsize=12)
+    ax.set_yticklabels(models)
     ax.invert_yaxis()
 
     # annotate integer values just outside the bars
     for yi, val in zip(y, rel):
-        ax.text(-val - pad, yi, f"{int(val)}%", ha='right', va='center', fontsize=12)
+        ax.text(-val, yi, f"{int(val)}%", ha='right', va='center')
     for yi, val in zip(y, irr):
-        ax.text(val + pad, yi, f"{int(val)}%", ha='left', va='center', fontsize=12)
+        ax.text(val, yi, f"{int(val)}%", ha='left', va='center')
 
     # hide spines and ticks
     for spine in ax.spines.values():
         spine.set_visible(False)
     ax.set_xticks([])
-    ax.set_title(title)
+    # fig.suptitle(title, fontsize=15)
     ax.set_xlim(left_lim, right_lim)
-    ax.set_xlabel("Relevant Preferences    |    Mixed Preferences   ", fontsize=12)
-
-    # # ─── add horizontal colorbar ─────────────────────────────────────────────
-    # # create a ScalarMappable for the full 0–100 range
-    # sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-    # sm.set_array([])  # dummy
-
-    # # place colorbar below the plot
-    # cbar = fig.colorbar(
-    #     sm,
-    #     ax=ax,
-    #     orientation='horizontal',
-    #     fraction=0.05,
-    #     pad=0.15
-    # )
-    # cbar.set_label("Percentage", fontsize=12)
-    # cbar.set_ticks([0, 100])
-    # cbar.set_ticklabels(["0 %", "100 %"])
-
+    # ax.set_xlabel("Relevant Preferences    |    Mixed Preferences   ", fontsize=12)
     plt.tight_layout()
     # save
     fname = title.replace(" ", "_") + ".pdf"
-    plt.savefig(os.path.join(rel_irrel_path, fname))
+    plt.savefig(
+        os.path.join(rel_irrel_path, fname),
+        bbox_inches='tight',    # <= include all labels
+        pad_inches=0.1          # <= optional extra padding
+    )
 
     if show:
         plt.show()
@@ -988,6 +993,8 @@ def relevance_hbarplot(
     models: list[str],
     title, 
     xlabel,
+    label_dict=RELEVANCE_DICT,
+    figh=5,
     show: bool = False
 ):
     """
@@ -1012,7 +1019,7 @@ def relevance_hbarplot(
     color_map = dict(zip(relevance_list, colors))
 
     # ─── set up figure + GridSpec ─────────────────────────────────────────────
-    fig = plt.figure(constrained_layout=False, figsize=(8, 6))
+    fig = plt.figure(constrained_layout=False, figsize=(6, figh))
     gs  = fig.add_gridspec(2, 1,
                            height_ratios=[0.1, 0.9],
                            hspace=0.02)
@@ -1021,7 +1028,7 @@ def relevance_hbarplot(
     ax_leg = fig.add_subplot(gs[0, 0])
     ax_leg.axis('off')
     handles = [
-        patches.Patch(color=color_map[r], label=RELEVANCE_DICT[r])
+        patches.Patch(color=color_map[r], label=label_dict[r])
         for r in relevance_list
     ]
     ax_leg.legend(handles=handles,
@@ -1086,9 +1093,9 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
     color_map = dict(zip(methods, colors))
 
     # set up figure + GridSpec
-    fig = plt.figure(constrained_layout=False, figsize=(10, 12))
-    gs = fig.add_gridspec(3, 2,
-                          height_ratios=[0.1, 1, 1],
+    fig = plt.figure(constrained_layout=False, figsize=(12, 4))
+    gs = fig.add_gridspec(2, 3,
+                          height_ratios=[0.1, 1],
                           hspace=0.2, wspace=0.2)
 
     # — legend row —
@@ -1105,12 +1112,11 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
     axs = [
         fig.add_subplot(gs[1, 0]),
         fig.add_subplot(gs[1, 1]),
-        fig.add_subplot(gs[2, 0]),
-        fig.add_subplot(gs[2, 1]),
+        fig.add_subplot(gs[1,2]),
     ]
 
     # plot only as many as we have matrices
-    for ax, mat, sub_title in zip(axs, matrices, subplot_titles):
+    for axn, (ax, mat, sub_title) in enumerate(zip(axs, matrices, subplot_titles)):
         for i, m in enumerate(methods):
             off = (i - (n_methods - 1) / 2) * bar_h
             ax.barh(
@@ -1121,7 +1127,8 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
                 edgecolor='none'
             )
         ax.axvline(0, color='gray', linestyle='--', lw=0.8)
-        if ax in (axs[0], axs[2]):
+        if axn == 0:
+            print("Setting y-ticks")
             ax.set_yticks(y)
             ax.set_yticklabels(models, fontsize=15)
         else:
@@ -1136,13 +1143,13 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
     for ax in axs[n_metrics:]:
         fig.delaxes(ax)
 
-    # if odd number of metrics, center the last one in its row
-    if n_metrics % 2 == 1:
-        last_ax = axs[n_metrics - 1]
-        ax_box = last_ax.get_position()
-        ax_width = ax_box.width
-        new_left = 0.5 - (ax_width / 2)
-        last_ax.set_position([new_left, ax_box.y0, ax_width, ax_box.height])
+    # # if odd number of metrics, center the last one in its row
+    # if n_metrics % 2 == 1:
+    #     last_ax = axs[n_metrics - 1]
+    #     ax_box = last_ax.get_position()
+    #     ax_width = ax_box.width
+    #     new_left = 0.5 - (ax_width / 2)
+    #     last_ax.set_position([new_left, ax_box.y0, ax_width, ax_box.height])
 
     # optional super-title
     # fig.suptitle(title, fontsize=16, y=0.95)
@@ -1160,8 +1167,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
     """
     Plot (high - low) for each key, sorted by that difference.
     Uses a viridis colormap and shows a zero line for negative/positive.
-    
-    data:  2×N array, data[0]=low values, data[1]=high values
+
     keys:  length-N list of labels
     """
     # prepare output directory
@@ -1178,14 +1184,11 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
     data   = data[:, order]
     labels = [MODELS_SHORT_DICT[keys[i]] for i in order]
 
-    # positions
-    n = len(labels)
-    y = np.arange(n)
-
     # normalize data for colormap
-    cmap = cm.plasma
-    norm = mcolors.Normalize(vmin=data.min(), vmax=data.max())
-    colors = cmap(norm(data))
+    # cmap = cm.plasma
+    # norm = mcolors.Normalize(vmin=data.min(), vmax=data.max())
+    # colors = cmap(norm(data))
+    colors = cm.Blues(np.linspace(0.2, 1.0, M))
 
     # 2) Prepare series labels & colors
     if colors is None:
@@ -1194,7 +1197,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
 
     # 3) Bar geometry
     y = np.arange(N)
-    total_height = 0.8
+    total_height = 0.7
     bar_h = total_height / M
     # offsets so bars are centered around each y
     offsets = np.linspace(
@@ -1236,7 +1239,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
     ax.set_yticklabels(labels)
     ax.invert_yaxis()
     ax.set_xlabel(xlabel)
-    ax.set_title(title)
+    # ax.set_title(title)
 
     # grid behind bars
     ax.set_axisbelow(True)
@@ -1249,13 +1252,13 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
         spine.set_visible(False)
 
     # add a horizontal colorbar for the data scale
-    sm = cm.ScalarMappable(norm=norm, cmap=cmap)
-    sm.set_array([])
-    cbar = fig.colorbar(sm, ax=ax,
-                        orientation='horizontal',
-                        pad=0.15,
-                        fraction=0.05)
-    cbar.set_label('Low - High (Percentage)', fontsize=12)
+    # sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+    # sm.set_array([])
+    # cbar = fig.colorbar(sm, ax=ax,
+    #                     orientation='horizontal',
+    #                     pad=0.15,
+    #                     fraction=0.05)
+    # cbar.set_label('Low - High (Percentage)', fontsize=12)
 
     plt.tight_layout()
 
@@ -1277,12 +1280,10 @@ def plot_paired_violin(
     data_right,
     labels,
     title=None,
-    color_left='#77b5d9',
-    color_right='#fb8634',
     kind='violin',         # 'violin' or 'gaussian'
     bw_method=0.3,
     half_width=0.4,
-    alpha=0.7,
+    alpha=1.0,
     show=False,
 ):
     """
@@ -1299,6 +1300,9 @@ def plot_paired_violin(
     positions = np.arange(N)
 
     fig, ax = plt.subplots(figsize=(8, 6))
+
+    color_left = cm.Blues([0.66])
+    color_right = cm.Oranges([0.5])
 
     # find common y-limits so all violins share the same vertical span
     all_data = np.concatenate(data_left + data_right)
@@ -1354,11 +1358,10 @@ def plot_paired_violin(
 
     # styling
     ax.set_xticks(positions)
-    ax.set_xticklabels(labels, fontsize=15)
+    ax.set_xticklabels(labels, fontsize=24)
     ax.set_xlim(-1, N)  # give a bit of breathing room
-    ax.set_ylabel('Accuracy')
-    if title:
-        ax.set_title(title, fontsize=15)
+    ax.set_ylabel('Accuracy', fontsize=24)
+    # ax.set_title(title, fontsize=15)
 
     # legend
     left_patch  = plt.Line2D([0], [0], color=color_left,  lw=10, alpha=alpha)
@@ -1366,9 +1369,9 @@ def plot_paired_violin(
     ax.legend(
         [left_patch, right_patch],
         ['Full', 'Sampled'],
-        # loc='upper right',
+        loc='upper right',
         frameon=False,
-        fontsize=15,
+        fontsize=18,
     )
 
     ax.grid(axis='y', color='lightgrey', linestyle='--', linewidth=0.5)
