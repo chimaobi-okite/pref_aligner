@@ -731,7 +731,9 @@ def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER",
             row = arr[i]
             print(f"{model}\t", end="\t")
             for j in range(len(row)):
-                if row[j] == min(arr[:, j]):
+                if last_relevance == "irrelevant" and j%4==1:   # Irrelevant RER = '-'
+                    print("& - ", end=" ")
+                elif row[j] == min(arr[:, j]):
                     print(f"& \\textbf{{{row[j]:.1f}}}\%", end=" ")
                 else:
                     print(f"& {row[j]:.1f}\%", end=" ")
@@ -1188,7 +1190,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
     # cmap = cm.plasma
     # norm = mcolors.Normalize(vmin=data.min(), vmax=data.max())
     # colors = cmap(norm(data))
-    colors = cm.Blues(np.linspace(0.2, 1.0, M))
+    colors = cm.Blues([0.66])
 
     # 2) Prepare series labels & colors
     if colors is None:
@@ -1449,3 +1451,129 @@ def compare_profile_accuracy(
         show=show
     )
 
+
+
+
+def aligner_improvement_hbarplot(
+    base_results: np.ndarray,
+    aligner_results: np.ndarray,
+    models: list[str],
+    metrics: list[str],
+    title: str,
+    show: bool = False
+) -> tuple[plt.Figure, plt.Axes]:
+    """
+    Back-to-back grouped horizontal bar plot.
+    
+    - base_results, aligner_results: arrays of shape (n_models, n_metrics),
+      values in [0, 100].
+    - models: list of model names, length n_models.
+    - metrics: list of metric names, length n_metrics.
+    """
+    # --- sanity checks ---
+    base = np.array(base_results, dtype=float)
+    algn = np.array(aligner_results, dtype=float)
+    n_models, n_metrics = base.shape
+    assert algn.shape == (n_models, n_metrics)
+    assert len(models) == n_models
+    assert len(metrics) == n_metrics
+
+    # --- colors ---
+    blues  = cm.Blues(np.linspace(0.3, 0.7, n_metrics))
+    oranges = cm.Oranges(np.linspace(0.3, 0.7, n_metrics))
+
+
+    # ─── set up figure + GridSpec ─────────────────────────────────────────────
+    fig = plt.figure(constrained_layout=False, figsize=(5, 8))
+    gs  = fig.add_gridspec(2, 1,
+                           height_ratios=[0.05, 0.95],
+                           hspace=0.02)
+
+    n_metrics = len(metrics)
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[0, 0])
+    ax_leg.axis('off')
+    handles = [
+        patches.Patch(color=blues[0], alpha=0.0, label=f"Zero-Shot:"), 
+        patches.Patch(color=oranges[0], alpha=0.0, label=f"Aligner:")
+    ]
+    for i in range(n_metrics):
+        handles.extend([
+            patches.Patch(color=blues[i], label=f"{metrics[i]}"), 
+            patches.Patch(color=oranges[i], label=f"{metrics[i]}")
+        ])
+    ax_leg.legend(handles=handles,
+                  loc='center',
+                  ncol=len(metrics)+1,
+                  frameon=False,
+                  fontsize=12)
+
+    # --- bar plot ---
+    ax = fig.add_subplot(gs[1, 0])
+    y = np.arange(n_models)
+
+    # compute offsets so metrics are grouped around each y tick
+    bar_height = 0.8 / n_metrics
+    offsets = (np.arange(n_metrics) - (n_metrics - 1) / 2) * bar_height
+
+    # global padding & limits
+    max_val = max(base.max(), algn.max(), 1.0)
+    pad = max_val * 0.01
+    left_lim = -base.max() * 1.5 - 2
+    right_lim = algn.max()
+
+    # draw bars for each metric
+    for j in range(n_metrics):
+        yj = y + offsets[j]
+        # baseline (negative)
+        ax.barh(
+            yj, -base[:, j],
+            height=bar_height,
+            color=blues[j],
+        )
+        # aligner (positive)
+        ax.barh(
+            yj, algn[:, j],
+            height=bar_height,
+            color=oranges[j],
+        )
+        # annotate values
+        for yi, bv, av in zip(yj, base[:, j], algn[:, j]):
+            ax.text(-bv - pad, yi, f"{int(bv)}%",
+                    ha='right', va='center', fontsize=14)
+            ax.text(av + pad, yi, f"{int(av)}%",
+                    ha='left',  va='center', fontsize=14)
+
+    # y-axis labels
+    ax.set_yticks(y)
+    ax.set_yticklabels(models)
+    ax.invert_yaxis()
+
+    # styling
+    ax.set_xlim(left_lim, right_lim)
+    ax.set_xticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # title
+    # fig.suptitle(title, fontsize=14, y=0.98)
+
+    # save
+    rel_irrel_path = os.path.join(
+        "results/mcq_results/stats",
+        "aligner_improv_hbarplot"
+    )
+    os.makedirs(rel_irrel_path, exist_ok=True)
+    fname = title.replace(" ", "_") + ".pdf"
+    plt.savefig(
+        os.path.join(rel_irrel_path, fname),
+        bbox_inches='tight',
+        pad_inches=0.1
+    )
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+    return fig, ax
