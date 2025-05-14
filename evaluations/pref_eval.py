@@ -73,7 +73,8 @@ def run_pref_eval(df_path: str):
         df['pref_correct'] = df['pref_answer'] == df['gold_option']
         df['nopref_correct'] = df["nopref_answer"] == df['gold_option']
         
-        
+    print(df['pref_eval_rating'].value_counts())    
+    df['pref_eval_rating'] = pd.to_numeric(df['pref_eval_rating'], errors='coerce')
     df['followed_pref'] = df['pref_eval_rating'] >= 3
     df['is_robust'] = (df['pref_correct'] & df['followed_pref'])
     save_evaluation(df, df_path=df_path)

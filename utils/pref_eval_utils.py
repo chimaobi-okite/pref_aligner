@@ -93,14 +93,29 @@ def get_pref_evaluation(user_prompt: str,
   completion_tokens = response.usage.completion_tokens
   return response.choices[0].message.content, prompt_tokens, completion_tokens
 
+# def extract_judgment_from_xml(xml_string: str):
+#     explanation_match = re.search(r"<explanation>(.*?)</explanation>", xml_string, re.DOTALL)
+#     answer_match = re.search(r"<answer>(\d+)</answer>", xml_string)
+
+#     explanation = explanation_match.group(1).strip() if explanation_match else None
+#     answer = int(answer_match.group(1)) if answer_match else None
+
+#     return explanation, answer
+
 def extract_judgment_from_xml(xml_string: str):
-    explanation_match = re.search(r"<explanation>(.*?)</explanation>", xml_string, re.DOTALL)
-    answer_match = re.search(r"<answer>(\d+)</answer>", xml_string)
+    try:
+        if not isinstance(xml_string, str):
+            return "", ""
 
-    explanation = explanation_match.group(1).strip() if explanation_match else None
-    answer = int(answer_match.group(1)) if answer_match else None
+        explanation_match = re.search(r"<explanation>(.*?)</explanation>", xml_string, re.DOTALL)
+        answer_match = re.search(r"<answer>(\d+)</answer>", xml_string)
 
-    return explanation, answer
+        explanation = explanation_match.group(1).strip() if explanation_match else ""
+        answer = int(answer_match.group(1)) if answer_match else ""
+
+        return explanation, answer
+    except Exception:
+        return "", ""
 
 def estimate_cost(prompt_tokens, completion_tokens, input_price_per_1m=0.15, output_price_per_1m=0.6):
     input_cost = (prompt_tokens / 1000000) * input_price_per_1m

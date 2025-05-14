@@ -38,11 +38,20 @@ DATA_PATHS=(
     # "results/mcq_results/irrelevant/aligner/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
     # "results/mcq_results/irrelevant/aligner/full/Mistral-7B-Instruct-v0.3.csv"
 
-    "results/mcq_results/irrelevant_set/aligner/full/janus-7b.csv"
-    "results/mcq_results/irrelevant_set/aligner/full/Llama-3.1-8B-Instruct.csv"
-    "results/mcq_results/irrelevant_set/aligner/full/Mistral-7B-Instruct-v0.3.csv"
+    # "results/mcq_results/irrelevant_set/aligner/full/janus-7b.csv"
+    # "results/mcq_results/irrelevant_set/aligner/full/Llama-3.1-8B-Instruct.csv"
+    # "results/mcq_results/irrelevant_set/aligner/full/Mistral-7B-Instruct-v0.3.csv"
     # "results/mcq_results/irrelevant_set/aligner/full/Mixtral-8x7B-Instruct-v0.1.csv"
-    "results/mcq_results/irrelevant_set/aligner/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
+    # "results/mcq_results/irrelevant_set/aligner/full/Llama-3.3-70B-Instruct-Turbo-Free.csv"
+
+    # "results/mcq_results/relevant/aligner/full/Qwen3-8B.csv"
+    # "results/mcq_results/irrelevant_set/aligner/full/Qwen3-8B.csv"
+
+    "results/mcq_results/irrelevant_set/aligner/full/Mixtral-8x7B-Instruct-v0.1.csv"
+    "results/mcq_results/relevant/aligner/full/Mixtral-8x7B-Instruct-v0.1.csv"
+
+    "results/mcq_results/relevant/aligner/full/gemma-2-9b-it.csv"
+    "results/mcq_results/irrelevant_set/aligner/full/gemma-2-9b-it.csv"
 
     # "results/mcq_results/relevant/direct/full/Qwen3-32B_thinking.csv"
 

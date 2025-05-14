@@ -1,5 +1,6 @@
 import ast
 import os
+from evaluations.runs import qwen_batch_generate
 import torch
 from typing import Dict, List
 import pandas as pd
@@ -99,6 +100,31 @@ def run_aligner_generation(user_messages, batch_options_list, batch_responses, g
     predictions, invalids = extract_answer_letters_batch(responses, list_of_references,)
     return responses, predictions, invalids, thoughts
 
+def run_qwen_aligner_generation(user_messages, batch_options_list, batch_responses, model, tokenizer,):
+    results, _ = qwen_batch_generate(user_messages, model, tokenizer, enable_thinking = False)
+    input_len = len(user_messages)
+    
+    # print(results)
+    list_of_references = batch_options_list[:input_len]
+    list_of_references = [ast.literal_eval(refs) for refs in list_of_references]
+    
+    results = [extract_thoughts_and_response(response) for response in results]
+    responses = []
+    thoughts = []
+    for fallback_response, parsed in zip(batch_responses, results):
+        if parsed and 'response' in parsed:
+            responses.append(parsed['response'])
+            thoughts.append(parsed.get('thought', None))
+        else:
+            responses.append(fallback_response)
+            thoughts.append(None)
+    
+    # print(responses)
+    # print(thoughts)
+    
+    predictions, invalids = extract_answer_letters_batch(responses, list_of_references,)
+    return responses, predictions, invalids, thoughts
+
 def run_janus_aligner_generation(user_messages, batch_options_list, batch_responses, janus, janus_tokenizer,):
     input_strs = [apply_template_mistral_instruct(user_message) for 
                    user_message in user_messages]
@@ -129,7 +155,7 @@ def run_aligner(df_path:str, model_path, pref_type):
     
     print(f"Running aligner model model {model_path}, on pref type {pref_type}")
     
-    BATCH_SIZE=32
+    BATCH_SIZE=8
     is_janus = False
     is_qwen = False
     is_client_model = False
@@ -144,7 +170,7 @@ def run_aligner(df_path:str, model_path, pref_type):
     
     df.rename(columns={col: new_col for col, new_col in columns_to_rename.items() if col in df.columns}, inplace=True)
     # print(df[['question', 'nopref_res', 'options', 'preference']].isnull().sum())
-    # df = df[:60]
+    # df = df[:10]
     
     
     
@@ -198,6 +224,11 @@ def run_aligner(df_path:str, model_path, pref_type):
             responses, predictions, invalids, thoughts = run_janus_aligner_generation(
                     user_messages, batch_options_list,batch_responses,
                     janus=model, janus_tokenizer=tokenizer
+                )
+        elif is_qwen:
+                    responses, predictions, invalids, thoughts = run_qwen_aligner_generation(
+                    user_messages, batch_options_list,batch_responses,
+                    model=model, tokenizer=tokenizer
                 )
                 
         elif is_client_model:
