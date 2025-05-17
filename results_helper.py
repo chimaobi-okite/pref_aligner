@@ -7,6 +7,7 @@ from re import A
 from tkinter import font
 
 from matplotlib.font_manager import font_scalings
+from matplotlib.pylab import f
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -56,6 +57,13 @@ PROMPT_METHODS_WITHOUT_ALIGNER = [
     "icl",
     "self_critic"
 ]
+PROMPT_METHODS_DICT = {
+    "direct": "Zero-Shot",
+    "cot": "CoT",
+    "icl": "ICL",
+    "self_critic": "Self-Critic",
+    "aligner": "Pref-Aligner"
+}
 
 # List of models (as provided)
 MODELS_FULL = [
@@ -146,10 +154,10 @@ PREF_DICTS = {
 
 METRICS = ["BR", "RER", "AFR", "PVR"]
 METRIC_LABELS = {
-    "BR": "Breakage Rate (BR)",
-    "RER": "Robustness Error Rate (RER)",
-    "AFR": "Alignment Failure Rate (AFR)",
-    "PVR": "Performance Variation Rate (PVR)",
+    "BR": "Breakage Rate",
+    "RER": "Robustness Error",
+    "AFR": "Alignment Failure",
+    "PVR": "Performance Variation",
 }
 
 METRIC_LABELS_ABBR = {
@@ -395,6 +403,18 @@ def validate_full_dataset(relevance, method, model, use_eval, verbose=False):
     # True if have the same column names and same number of rows
     return (exist_rows == robust_rows)
 
+def extend_irrelevant(filename):
+    df = pd.read_csv(filename)
+    # Compute column "followed_pref" as all 0.0
+    # Compute column "is_robust" as nopref_correct
+    df["followed_pref"] = 0.0
+    df["is_robust"] = (df["pref_answer"] == df["gold_option"])
+    df["pref_ans"] = df["pref_answer"]
+    df["no_pref_ans"] = df["nopref_answer"]
+    # Save file from {filename}.csv to {filename}-aligner-full.csv
+    new_filename = filename.replace(".csv", "-aligner-full_eval.csv")
+    df.to_csv(new_filename, index=False)
+
 def compute_non_eval(dataset, data_df):
     """
     Deprecated: compute non-eval dataset extra columns for earlier in experiments
@@ -633,9 +653,10 @@ def RER(chunk, is_irrelevant=False):
 
 def AFR(chunk, is_irrelevant=False):
     """Updated to take nopref_correct only"""
-    robust_col = chunk.loc[chunk["nopref_correct"]==1, "is_robust"].mean()
-    corr_pref = chunk.loc[chunk["nopref_correct"]==1, "pref_correct"].mean()
-    afr = 1 - robust_col/corr_pref
+    robust_col = chunk.loc[chunk["nopref_correct"]==1, "followed_pref"].mean()
+    afr = 1 - robust_col
+    # corr_pref = chunk.loc[chunk["nopref_correct"]==1, "pref_correct"].mean()
+    # afr = 1 - robust_col/corr_pref
     return afr
 
 def PVR(chunk, is_irrelevant=False):
@@ -683,8 +704,10 @@ def compute_metrics(results_dict, verbose=False):
         for name, func in zip(
             ["BR", "RER", "AFR", "PVR", "NoPrefInvalid", "PrefInvalid", "MCValidDrop"],
             [BR, RER, AFR, PVR, NoPrefInvalid, PrefInvalid, MCValidDrop],
-        ):
-            percentage = func(df, is_irrelevant=(relevance=='irrelevant')) * 100. if df is not None else None
+        ):  
+            is_irrelevant=(relevance=='irrelevant')
+            # print(f"Is irrelevant: {is_irrelevant} for relevance {relevance}")
+            percentage = func(df, is_irrelevant) * 100. if df is not None else None
             results_dict.add(
                 percentage,
                 relevance=relevance,
@@ -731,19 +754,19 @@ def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER",
             row = arr[i]
             print(f"{model}\t", end="\t")
             for j in range(len(row)):
-                if last_relevance == "irrelevant" and j%4==1:   # Irrelevant RER = '-'
+                if last_relevance == "irrelevant" and j%4==2:   # Irrelevant RER = '-'
                     print("& - ", end=" ")
                 elif row[j] == min(arr[:, j]):
-                    print(f"& \\textbf{{{row[j]:.1f}}}\%", end=" ")
+                    print(f"& \\textbf{{{row[j]:.1f}}}", end=" ")
                 else:
-                    print(f"& {row[j]:.1f}\%", end=" ")
+                    print(f"& {row[j]:.1f}", end=" ")
             print("\\\\")
-        print("\\rowcolor{gray!15}\t")
-        print("\\textbf{Average}", end=" ")
-        mean = arr.mean(axis=0)
-        for i in range(len(mean)):
-            print(f"& {mean[i]:.1f}\%", end=" ")
-        print("\\\\")
+        # print("\\rowcolor{gray!15}\t")
+        # print("\\textbf{Average}", end=" ")
+        # mean = arr.mean(axis=0)
+        # for i in range(len(mean)):
+        #     print(f"& {mean[i]:.1f}\%", end=" ")
+        # print("\\\\")
             
     arr_list = []
     ylabels = []
@@ -751,13 +774,13 @@ def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER",
         relevances,
         PROMPT_METHODS,
         MODELS,
-    ):  
+    ):
+        if method != last_method and last_method is not None:
+            print_table(arr_list, ylabels)
         if relevance != last_relevance:
-            print(f"-------------------- {relevance, RELEVANCE_DICT[relevance]} --------------------")
+            print(f"\n-------------------- {relevance, RELEVANCE_DICT[relevance]} --------------------")
             last_relevance = relevance
         if method != last_method:
-            if last_method is not None:
-                print_table(arr_list, ylabels)
             print(f"\n-------------------- {method} --------------------")
             last_method = method
             arr_list.clear()
@@ -782,6 +805,7 @@ def print_metric_table(results_dict, relevances=RELEVANCE, metrics=["BR", "RER",
         if not np.allclose(arr, 0.0, 1e-4):
             arr_list.append(arr)
             ylabels.append(MODELS_SHORT_DICT[model])
+    print_table(arr_list, ylabels)
 
 def plot_metrics_line(metric_array, metric):
     # For each prompt method, extract the accuracy values across models and plot them.
@@ -800,67 +824,107 @@ def plot_metrics_line(metric_array, metric):
     plt.tight_layout()
     plt.savefig(os.path.join(stats_folder, "line_plot_"+metric+".pdf"))
 
+import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 def named_scatter(x, y, keys, title, xlabel, ylabel, scores=None, show=False):
     scatter_plot_path = os.path.join("results/mcq_results/stats", "metric_scatter")
     os.makedirs(scatter_plot_path, exist_ok=True)
 
-    # use the Viridis colormap instead of Blues
-    cross_colors = cm.plasma(np.linspace(0.0, 0.7, len(x)))
-    fig, ax = plt.subplots(figsize=(8,8))
+    # 1) compute badness = distance from origin
+    x_arr = np.array(x, dtype=np.float32)
+    y_arr = np.array(y, dtype=np.float32)
+    badness = np.sqrt(x_arr**2 + y_arr**2)
+    normed = (badness - badness.min()) / (badness.max() - badness.min())
 
-    keys = [key+f" ({str(int(s))}%)" for key, s in zip(keys, scores)]
-    # plot each point separately so it gets its own label
-    for xi, yi, key, c in zip(x, y, keys, cross_colors):
+    # 2) map through green→red
+    cmap = plt.get_cmap('RdYlGn_r')
+    colors = cmap(normed)
+
+    # optional: keep a cycle of distinct markers if you still want shape variety
+    markers = ['o', 'X', 'd', '*']
+
+    fig, ax = plt.subplots(figsize=(6, 8))
+
+    # hide the top and right borders
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    # make sure scores is a plain Python list if it exists
+    if scores is not None:
+        scores_list = list(scores)
+        # label each model with its score
+        labels = [f"{k} ({int(s)})" for k, s in zip(keys, scores_list)]
+    else:
+        # no scores → just use the key names
+        scores_list = [None] * len(keys)
+        labels = list(keys)
+
+    for i, (xi, yi, lbl) in enumerate(zip(x_arr, y_arr, labels)):
         ax.scatter(
             xi, yi,
-            marker='o',
-            s=60,
-            color=c,
-            linewidths=2,
-            label=key
+            marker=markers[i % len(markers)],
+            s=100,
+            color=colors[i],
+            edgecolor='k',
+            linewidth=1,
+            alpha=1,
+            label=lbl,
         )
 
-    # add text labels if you still want them
+    # only draw the little text labels if we actually have scores
     if scores is not None:
-        for i, (s, xi, yi) in enumerate(zip(scores, x, y)):
+        for i, (xi, yi, s) in enumerate(zip(x_arr, y_arr, scores_list)):
             if i == 9:
                 print("Modifying")
-                x_offset = xi + 0.1
+                x_offset = xi + 0.15
                 y_offset = yi - 0.8
             else:
-                x_offset = xi + 0.01
-                y_offset = yi + 0.02
+                x_offset = xi + 0.15
+                y_offset = yi + 0.1
             ax.text(
-                x_offset,
-                y_offset,
-                f"{str(int(s))}%",
+                x_offset, y_offset,
+                str(int(s)),
                 fontsize=16,
-                va='bottom',
-                ha='left'
+                va='bottom', ha='left'
             )
 
-    ax.set_xlabel(xlabel, fontsize=18)
-    ax.set_ylabel(ylabel, fontsize=18)
-    # ax.set_title(title, fontsize=18)
+    ax.set_xlabel(xlabel, fontsize=16)
+    ax.set_ylabel(ylabel, fontsize=16)
+    ax.set_xlim(left=0)
+    ax.set_ylim(bottom=0)
     ax.grid(which='both', linestyle='--', alpha=0.5)
 
-    # legend below the chart, centered, in 2 columns
+    # 3) colorbar for the badness scale
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(0,1))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax, fraction=0.046, pad=0.04)
+    # cbar.set_label('Badness (distance from origin)', fontsize=14)
+
+    # legend below
     ax.legend(
         loc='upper center',
         bbox_to_anchor=(0.5, -0.1),
         ncol=2,
-        frameon=False
+        frameon=False,
+        fontsize=16,
+        markerscale=1.5,
+        handletextpad=0.5
     )
 
-    # make room at the bottom for that legend
-    plt.tight_layout(rect=[0, 0, 1, 1])
-
-    plt.savefig(os.path.join(scatter_plot_path, title.replace(" ", "_") + ".pdf"))
+    plt.tight_layout(rect=[0,0,1,1])
+    outpath = os.path.join(scatter_plot_path, title.replace(" ", "_") + ".pdf")
+    plt.savefig(
+        outpath, 
+        bbox_inches='tight',    # <= include all labels
+        pad_inches=0.1          # <= optional extra padding
+    )
     if show:
         plt.show()
     else:
         plt.close()
+
 
 
 def rel_irrel_backback_barplot(
@@ -886,7 +950,7 @@ def rel_irrel_backback_barplot(
     # rel_colors = cm.Blues(rel_norm)
     # irr_colors = cm.Oranges(irr_norm)
     rel_color = cm.Blues([0.66])
-    irr_color = cm.Oranges([0.5])    # cm.Blues([0.7])
+    irr_color = cm.Blues([0.33])    # cm.Blues([0.7])
 
     n = len(models)
     y = np.arange(n)
@@ -912,31 +976,43 @@ def rel_irrel_backback_barplot(
     # — legend row —
     ax_leg = fig.add_subplot(gs[0, :])
     ax_leg.axis('off')
-    handles = [patches.Patch(color=c, label=m) for c, m in zip([rel_color, irr_color], ["Relevant", "Mixed"])]
+    handles = [patches.Patch(color=c, label=m, hatch=h) for c,m,h in zip(
+        [rel_color, irr_color], 
+        ["Relevant", "Mixed"],
+        ["", "\\\\\\"],
+    )]
+    for h in handles:
+        h._hatch_color = mcolors.to_rgba("navy", alpha=0.5)
+        h.stale = True
+        h._hatch_linewidth = 0.5
     ax_leg.legend(handles=handles,
                   loc='center',
                   ncol=2,
                   frameon=False,
-                  fontsize=15)
+                  fontsize=18)
 
     # — the 2×2 bar plots (we’ll drop extras below) —
     ax = fig.add_subplot(gs[1, 0])
 
     # left (negative) bars
-    ax.barh(y, -rel, color=rel_color, height=0.8)
+    ax.barh(y, -rel, color=rel_color, height=0.6)
     # right bars
-    ax.barh(y, irr, color=irr_color, height=0.8)
+    right_bcs = ax.barh(y, irr, color=irr_color, hatch='\\\\\\', height=0.6)
+    for bc in right_bcs:
+        bc._hatch_color = mcolors.to_rgba("navy", alpha=0.5)
+        bc.stale = True
+        bc._hatch_linewidth = 0.5
 
     # y-axis with model names on the left
     ax.set_yticks(y)
-    ax.set_yticklabels(models)
+    ax.set_yticklabels(models, fontsize=18)
     ax.invert_yaxis()
 
     # annotate integer values just outside the bars
     for yi, val in zip(y, rel):
-        ax.text(-val, yi, f"{int(val)}%", ha='right', va='center')
+        ax.text(-val-1, yi, f"{int(val)}", ha='right', va='center', fontsize=18)
     for yi, val in zip(y, irr):
-        ax.text(val, yi, f"{int(val)}%", ha='left', va='center')
+        ax.text(val+1, yi, f"{int(val)}", ha='left', va='center', fontsize=18)
 
     # hide spines and ticks
     for spine in ax.spines.values():
@@ -1037,7 +1113,7 @@ def relevance_hbarplot(
                   loc='center',
                   ncol=n_rel,
                   frameon=False,
-                  fontsize=15)
+                  fontsize=18)
 
     # — bar plot row —
     ax = fig.add_subplot(gs[1, 0])
@@ -1055,9 +1131,9 @@ def relevance_hbarplot(
     # style the bar plot
     ax.axvline(0, color='gray', linestyle='--', lw=0.8)
     ax.set_yticks(y)
-    ax.set_yticklabels(models, fontsize=15)
+    ax.set_yticklabels(models, fontsize=18)
     ax.invert_yaxis()
-    ax.set_xlabel(xlabel, fontsize=15)
+    ax.set_xlabel(xlabel, fontsize=18)
     # ax.set_title(title, fontsize=14)
     for spine in ax.spines.values():
         spine.set_visible(False)
@@ -1074,6 +1150,78 @@ def relevance_hbarplot(
         plt.show()
     else:
         plt.close()
+
+def rel_irrel_topdown_barplot(rel_results, irrel_results, models, title, show=False):
+    import os
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    import matplotlib.patches as patches
+
+    # prep data + colors
+    rel = np.asarray(rel_results, float)
+    irr = np.asarray(irrel_results, float)
+    n = len(models)
+    x = np.arange(n)
+    bar_w = 0.6 / 2  # two bars per model
+    rel_color = cm.Blues([0.66])[0]
+    irr_color = cm.Blues([0.33])[0]
+
+    # output dir
+    out = os.path.join("results/mcq_results/stats", "rel_irrel_barplot")
+    os.makedirs(out, exist_ok=True)
+
+    # figure
+    fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
+
+    # zero line at top
+    ax.axhline(0, color="gray", linestyle="-", lw=1)
+
+    # draw each pair of bars downward (negative height)
+    for i, (rv, iv) in enumerate(zip(rel, irr)):
+        ax.bar(x[i] - bar_w/2, rv, bar_w,
+               color=rel_color, edgecolor="none")
+        ax.bar(x[i] + bar_w/2, iv, bar_w,
+               facecolor=irr_color, edgecolor="navy", hatch="///", linewidth=0.0)
+
+        # annotations just below the bar tips
+        pad = max(rel.max(), irr.max()) * 0.02
+        ax.text(x[i] - bar_w/2, rv - pad,
+                f"{int(rv)}", ha="center", va="top")
+        ax.text(x[i] + bar_w/2, iv - pad,
+                f"{int(iv)}", ha="center", va="top")
+
+    # x-axis labels at bottom
+    ax.set_xticks(x)
+    ax.set_xticklabels(models, fontsize=14, rotation=45, ha="right")
+
+    # remove spines/ticks
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_visible(False)
+    ax.set_yticks([])
+
+    # flip the y-axis so negative (downward) grows downward
+    ax.invert_yaxis()
+
+    # legend
+    handles = [
+        patches.Patch(color=rel_color, label="Relevant"),
+        patches.Patch(facecolor=irr_color, edgecolor="navy", hatch="///", label="Mixed")
+    ]
+    ax.legend(handles=handles, loc="upper right", frameon=False, fontsize=14)
+
+    # title + save
+    ax.set_title(title, fontsize=16, pad=12)
+    fname = title.replace(" ", "_") + ".pdf"
+    plt.savefig(os.path.join(out, fname), bbox_inches="tight", pad_inches=0.1)
+
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+    return fig, ax
 
 
 def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False):
@@ -1190,7 +1338,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
     # cmap = cm.plasma
     # norm = mcolors.Normalize(vmin=data.min(), vmax=data.max())
     # colors = cmap(norm(data))
-    colors = cm.Blues([0.66])
+    colors = cm.Blues([0.45])
 
     # 2) Prepare series labels & colors
     if colors is None:
@@ -1199,7 +1347,7 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
 
     # 3) Bar geometry
     y = np.arange(N)
-    total_height = 0.7
+    total_height = 0.6
     bar_h = total_height / M
     # offsets so bars are centered around each y
     offsets = np.linspace(
@@ -1233,14 +1381,23 @@ def missing_answer_diffplot(data, keys, title, xlabel, series_labels=None, show=
                 edgecolor='none'
             )
 
+    for i, yi in enumerate(y):
+        for field in range(data.shape[0]):
+            val = data[field, i]
+            if val <= 0:
+                ax.text(1, yi, f"{int(val)}", ha='left', va='center', fontsize=18)
+            else:
+                ax.text(val+1, yi, f"{int(val)}", ha='left', va='center', fontsize=18)
+            # ax.text(val+1, yi, f"{int(val)}", ha='left', va='center', fontsize=18)
+        
     # zero reference line
     ax.axvline(0, color='gray', linestyle='--', lw=0.8)
 
     # labels & styling
     ax.set_yticks(y)
-    ax.set_yticklabels(labels)
+    ax.set_yticklabels(labels, fontsize=18)
     ax.invert_yaxis()
-    ax.set_xlabel(xlabel)
+    ax.set_xlabel(xlabel, fontsize=18)
     # ax.set_title(title)
 
     # grid behind bars
@@ -1370,7 +1527,7 @@ def plot_paired_violin(
     right_patch = plt.Line2D([0], [0], color=color_right, lw=10, alpha=alpha)
     ax.legend(
         [left_patch, right_patch],
-        ['Full', 'Sampled'],
+        ['Within', 'Between'],
         loc='upper right',
         frameon=False,
         fontsize=18,
@@ -1454,7 +1611,7 @@ def compare_profile_accuracy(
 
 
 
-def aligner_improvement_hbarplot(
+def aligner_improvement_hbarplot_full(
     base_results: np.ndarray,
     aligner_results: np.ndarray,
     models: list[str],
@@ -1539,9 +1696,9 @@ def aligner_improvement_hbarplot(
         )
         # annotate values
         for yi, bv, av in zip(yj, base[:, j], algn[:, j]):
-            ax.text(-bv - pad, yi, f"{int(bv)}%",
+            ax.text(-bv - pad, yi, f"{int(bv)}",
                     ha='right', va='center', fontsize=14)
-            ax.text(av + pad, yi, f"{int(av)}%",
+            ax.text(av + pad, yi, f"{int(av)}",
                     ha='left',  va='center', fontsize=14)
 
     # y-axis labels
@@ -1577,3 +1734,108 @@ def aligner_improvement_hbarplot(
         plt.close(fig)
 
     return fig, ax
+
+
+
+def aligner_improvement_hbarplot(
+    data: np.ndarray,
+    methods: list[str],
+    models: list[str],
+    title: str,
+    xlabel: str,
+    label_dict,       # e.g. RELEVANCE_DICT
+    figh: float = 4,
+    show: bool = False
+):
+    """
+    data.shape == (n_models, n_methods)
+    draws one grouped horizontal‐bar plot with a custom legend row above,
+    using two Blues (0.66, 0.33) and a '*' hatch on the lighter one.
+    """
+
+    # output folder
+    hbar_path = os.path.join("results/mcq_results/stats", "aligner_improv_hbarplot")
+    os.makedirs(hbar_path, exist_ok=True)
+
+    n_models = len(models)
+    n_meth   = len(methods)
+
+    # bar geometry
+    y     = np.arange(n_models)
+    bar_h = 0.6 / n_meth
+
+    # colors & hatches
+    dark_blue  = cm.Blues(0.66)
+    light_blue = cm.Greens(0.4)
+    colors     = [dark_blue, light_blue]
+    hatch_map  = {methods[0]: '', methods[1]: ''}
+
+    color_map = dict(zip(methods, colors))
+
+    # ─── set up figure + GridSpec ─────────────────────────────────────────────
+    fig = plt.figure(constrained_layout=False, figsize=(6, figh))
+    gs  = fig.add_gridspec(2, 1,
+                           height_ratios=[0.1, 0.9],
+                           hspace=0.02)
+
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[0, 0])
+    ax_leg.axis('off')
+
+    handles = []
+    for m in methods:
+        p = patches.Patch(color=color_map[m],
+                          label=label_dict[m],
+                          hatch=hatch_map[m])
+        # style the hatch
+        p._hatch_color      = mcolors.to_rgba("lime", alpha=0.5)
+        p._hatch_linewidth  = 0.5
+        p.stale             = True
+        handles.append(p)
+
+    ax_leg.legend(handles=handles,
+                  loc='center',
+                  ncol=n_meth,
+                  frameon=False,
+                  fontsize=18)
+
+    # — bar plot row —
+    ax = fig.add_subplot(gs[1, 0])
+    for i, m in enumerate(methods):
+        y_pos = y + (i - (n_meth - 1) / 2) * bar_h
+        bar = ax.barh(
+            y_pos,
+            data[:, i],
+            height=bar_h,
+            color=color_map[m],
+            hatch=hatch_map[m],
+            edgecolor='none',
+        )
+        # if this series has a hatch, style it
+        if hatch_map[m]:
+            for bc in bar:
+                bc._hatch_color     = mcolors.to_rgba("", alpha=0.5)
+                bc._hatch_linewidth = 0.5
+                bc.stale            = True
+
+    # style the bar plot
+    ax.axvline(0, color='gray', linestyle='--', lw=0.8)
+    ax.set_yticks(y)
+    ax.set_yticklabels(models, fontsize=18)
+    ax.invert_yaxis()
+    ax.set_xlabel(xlabel, fontsize=18)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.grid(which='both', axis='x', linestyle='--', alpha=0.3)
+
+    # ─── save & optionally show ────────────────────────────────────────────────
+    plt.tight_layout(rect=[0, 0, 1, 1])
+    plt.savefig(
+        os.path.join(hbar_path, f"{title.replace(' ', '_')}.pdf"),
+        bbox_inches='tight',
+        pad_inches=0.1
+    )
+    if show:
+        plt.show()
+    else:
+        plt.close()
