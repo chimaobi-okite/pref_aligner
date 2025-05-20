@@ -407,10 +407,11 @@ def extend_irrelevant(filename):
     df = pd.read_csv(filename)
     # Compute column "followed_pref" as all 0.0
     # Compute column "is_robust" as nopref_correct
-    df["followed_pref"] = 0.0
-    df["is_robust"] = (df["pref_answer"] == df["gold_option"])
-    df["pref_ans"] = df["pref_answer"]
+    df["followed_pref"] = 1.0
+    df["is_robust"] = (df["aligner_answer"] == df["gold_option"])
+    df["pref_ans"] = df["aligner_answer"]
     df["no_pref_ans"] = df["nopref_answer"]
+    df["pref_correct"] = (df["aligner_answer"] == df["gold_option"])
     # Save file from {filename}.csv to {filename}-aligner-full.csv
     new_filename = filename.replace(".csv", "-aligner-full_eval.csv")
     df.to_csv(new_filename, index=False)
@@ -1085,7 +1086,7 @@ def relevance_hbarplot(
     os.makedirs(hbar_path, exist_ok=True)
 
     n_models = len(models)
-    n_rel    = len(relevance_list)
+    n_rel    = max(len(relevance_list), 3)
 
     # positions for each model
     y = np.arange(n_models)
@@ -1151,12 +1152,105 @@ def relevance_hbarplot(
     else:
         plt.close()
 
+def relevance_vbarplot(
+    data,
+    relevance_list,
+    models,
+    title: str,
+    ylabel: str,
+    label_dict=RELEVANCE_DICT,
+    figh=5,
+    show: bool = False
+):
+    """
+    data.shape == (n_models, n_rel)
+    draws one grouped vertical‐bar plot inverted so bars grow downward
+    """
+    # output folder
+    vbar_path = os.path.join("results/mcq_results/stats", "relevance_vbarplot")
+    os.makedirs(vbar_path, exist_ok=True)
+
+    n_models = len(models)
+    n_rel    = len(relevance_list)
+
+    # x positions for each model
+    x = np.arange(n_models)
+    bar_w = 0.8 / n_rel
+
+    # pick colors
+    cmap      = cm.Blues
+    colors    = cmap(np.linspace(0.2, 1.0, n_rel))
+    color_map = dict(zip(relevance_list, colors))
+
+    # set up figure + GridSpec for legend + plot
+    fig = plt.figure(constrained_layout=False, figsize=(6, figh))
+    gs  = fig.add_gridspec(2, 1,
+                           height_ratios=[0.9, 0.1],
+                           hspace=0.02)
+
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[1, 0])
+    ax_leg.axis('off')
+    handles = [
+        patches.Patch(color=color_map[r], label=label_dict[r])
+        for r in relevance_list
+    ]
+    ax_leg.legend(handles=handles,
+                  loc='center',
+                  ncol=n_rel,
+                  frameon=False,
+                  fontsize=14)
+
+    # — bar plot row —
+    ax = fig.add_subplot(gs[0, 0])
+
+    # draw each relevance as a vertical bar series
+    for i, rel in enumerate(relevance_list):
+        x_pos = x + (i - (n_rel - 1) / 2) * bar_w
+        ax.bar(
+            x_pos,
+            data[:, i],
+            width=bar_w,
+            color=color_map[rel],
+            edgecolor='none'
+        )
+
+    # invert the y-axis so bars extend downward from zero at the top
+    max_val = np.max(data)
+    ax.set_ylim(0, max_val * 1.05)
+    ax.invert_yaxis()
+
+    # draw a baseline at zero (now at top)
+    ax.axhline(0, color='gray', linestyle='--', lw=0.8)
+
+    # model names on the x-axis, tilted 45°
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.tick_top()
+    ax.set_xticks(x)
+    ax.set_xticklabels(models, rotation=45, ha='left', fontsize=15)
+
+    ax.set_ylabel(ylabel, fontsize=15)
+
+    # clean up spines and add horizontal grid lines
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.grid(which='both', axis='y', linestyle='--', alpha=0.3)
+
+    # save & optionally show
+    plt.tight_layout(rect=[0, 0, 1, 1])
+    fig.savefig(
+        os.path.join(vbar_path, f"{title.replace(' ', '_')}.pdf"),
+        bbox_inches='tight',
+        pad_inches=0.1
+    )
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+
 def rel_irrel_topdown_barplot(rel_results, irrel_results, models, title, show=False):
-    import os
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import matplotlib.patches as patches
 
     # prep data + colors
     rel = np.asarray(rel_results, float)
@@ -1172,7 +1266,7 @@ def rel_irrel_topdown_barplot(rel_results, irrel_results, models, title, show=Fa
     os.makedirs(out, exist_ok=True)
 
     # figure
-    fig, ax = plt.subplots(figsize=(6, 6), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(6, 4), constrained_layout=True)
 
     # zero line at top
     ax.axhline(0, color="gray", linestyle="-", lw=1)
@@ -1181,25 +1275,34 @@ def rel_irrel_topdown_barplot(rel_results, irrel_results, models, title, show=Fa
     for i, (rv, iv) in enumerate(zip(rel, irr)):
         ax.bar(x[i] - bar_w/2, rv, bar_w,
                color=rel_color, edgecolor="none")
-        ax.bar(x[i] + bar_w/2, iv, bar_w,
+        right_bcs = ax.bar(x[i] + bar_w/2, iv, bar_w,
                facecolor=irr_color, edgecolor="navy", hatch="///", linewidth=0.0)
 
+        for bc in right_bcs:
+            bc._hatch_color = mcolors.to_rgba("navy", alpha=0.5)
+            bc.stale = True
+            bc._hatch_linewidth = 0.5
+
+
         # annotations just below the bar tips
-        pad = max(rel.max(), irr.max()) * 0.02
-        ax.text(x[i] - bar_w/2, rv - pad,
+        # pad = max(rel.max(), irr.max()) * 0.02
+        ax.text(x[i] - bar_w/2, rv + 0.8,
                 f"{int(rv)}", ha="center", va="top")
-        ax.text(x[i] + bar_w/2, iv - pad,
+        ax.text(x[i] + bar_w/2, iv + 0.8,
                 f"{int(iv)}", ha="center", va="top")
 
-    # x-axis labels at bottom
+    # x-axis labels at top
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.tick_top()
     ax.set_xticks(x)
-    ax.set_xticklabels(models, fontsize=14, rotation=45, ha="right")
+    ax.set_xticklabels(models, fontsize=15, rotation=45, ha="left")
 
     # remove spines/ticks
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
     ax.set_yticks([])
+    ax.set_ylim(0, max(rel.max(), irr.max()) * 1.1)
 
     # flip the y-axis so negative (downward) grows downward
     ax.invert_yaxis()
@@ -1207,12 +1310,16 @@ def rel_irrel_topdown_barplot(rel_results, irrel_results, models, title, show=Fa
     # legend
     handles = [
         patches.Patch(color=rel_color, label="Relevant"),
-        patches.Patch(facecolor=irr_color, edgecolor="navy", hatch="///", label="Mixed")
+        patches.Patch(facecolor=irr_color,  hatch="///", label="Mixed")
     ]
-    ax.legend(handles=handles, loc="upper right", frameon=False, fontsize=14)
+    for h in handles:
+        h._hatch_color = mcolors.to_rgba("navy", alpha=0.5)
+        h.stale = True
+        h._hatch_linewidth = 0.5
+    ax.legend(handles=handles, loc="lower left", frameon=False, fontsize=15)
 
     # title + save
-    ax.set_title(title, fontsize=16, pad=12)
+    # ax.set_title(title, fontsize=16, pad=12)
     fname = title.replace(" ", "_") + ".pdf"
     plt.savefig(os.path.join(out, fname), bbox_inches="tight", pad_inches=0.1)
 
@@ -1284,10 +1391,12 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
         else:
             ax.set_yticks(y)
             ax.set_yticklabels([])
+        # ax.axvline(0, color='gray', linestyle='--', lw=0.8)
         ax.set_xlabel(METRIC_LABELS[sub_title], fontsize=15)
         ax.invert_yaxis()
         for spine in ax.spines.values():
             spine.set_visible(False)
+        ax.grid(which='both', axis='x', linestyle='--', alpha=0.3)
 
     # remove any unused axes (e.g. the 4th when n_metrics == 3)
     for ax in axs[n_metrics:]:
@@ -1307,6 +1416,81 @@ def method_hbarplot(matrices, methods, models, subplot_titles, title, show=False
     # save/show
     plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"),
                 format='pdf', bbox_inches='tight', dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+def method_vbarplot(matrices, methods, models, subplot_titles, title, show=False):
+    """
+    Matrix: (models x methods)
+    Inverted vertical bar plot version.
+    """
+    hbar_path = os.path.join("results/mcq_results/stats", "method_vbarplot")
+    os.makedirs(hbar_path, exist_ok=True)
+
+    n_models  = len(models)
+    n_methods = len(methods)
+    n_metrics = len(matrices)
+    x = np.arange(n_models)
+    bar_w = 0.75 / n_methods
+
+    # color mapping
+    cmap = cm.Blues
+    colors = cmap(np.linspace(0.2, 1.0, n_methods))
+    color_map = dict(zip(methods, colors))
+
+    # set up figure + GridSpec
+    fig = plt.figure(constrained_layout=False, figsize=(12, 4))
+    gs = fig.add_gridspec(2, 3, height_ratios=[0.8, 0.2], hspace=0.02, wspace=0.3)
+
+    # — bar plot row —
+    # ax = fig.add_subplot(gs[0, 0])
+    
+    # — Iterate through subplots —
+    for idx, (mat, sub_title) in enumerate(zip(matrices, subplot_titles)):
+        ax = fig.add_subplot(gs[0, idx])
+        for i, m in enumerate(methods):
+            x_pos = x + (i - (n_methods - 1) / 2) * bar_w
+            bar = ax.bar(
+                x_pos,
+                -mat[:, i],  # Inverted
+                width=bar_w,
+                color=color_map[m],
+                edgecolor='none',
+            )
+
+        # X labels at the top for the last subplot only
+        ax.xaxis.set_label_position('top')
+        ax.xaxis.tick_top()
+        ax.set_xticks(x)
+        if max([len(m) for m in models]) > 10:
+            ax.set_xticklabels(models, rotation=45, ha='left', fontsize=15)
+        else:
+            ax.set_xticklabels(models, fontsize=15)
+        # ax.set_ylim(-29)
+        ax.set_ylabel(sub_title, fontsize=12)
+
+
+    # X labels at the top
+    # ax.xaxis.set_label_position('top')
+    # ax.xaxis.tick_top()
+    # ax.set_xticks(x)
+    # if max([len(m) for m in models]) > 10:
+    #     ax.set_xticklabels(models, rotation=45, ha='left', fontsize=15)
+    # else:
+    #     ax.set_xticklabels(models, fontsize=15)
+    
+    # ax.set_ylabel("Values", fontsize=15)
+
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[1, :])
+    ax_leg.axis('off')
+    handles = [patches.Patch(color=color_map[m], label=m) for m in methods]
+    ax_leg.legend(handles=handles, loc='center', ncol=n_methods, frameon=False, fontsize=15)
+
+    # Save or show
+    plt.savefig(os.path.join(hbar_path, title.replace(" ", "_") + ".pdf"), format='pdf', bbox_inches='tight', dpi=600)
     if show:
         plt.show()
     else:
@@ -1817,6 +2001,17 @@ def aligner_improvement_hbarplot(
                 bc._hatch_color     = mcolors.to_rgba("", alpha=0.5)
                 bc._hatch_linewidth = 0.5
                 bc.stale            = True
+        # Add text labels to the right of the bars
+        for j, b in enumerate(bar):
+            ax.text(
+                b.get_width() + 0.02,  # Slightly offset to the right of the bar
+                b.get_y() + b.get_height() / 2,
+                f"{data[j, i]:.1f}",
+                va='center',
+                ha='left',
+                fontsize=15,
+                color='black'
+            )
 
     # style the bar plot
     ax.axvline(0, color='gray', linestyle='--', lw=0.8)
@@ -1832,6 +2027,110 @@ def aligner_improvement_hbarplot(
     plt.tight_layout(rect=[0, 0, 1, 1])
     plt.savefig(
         os.path.join(hbar_path, f"{title.replace(' ', '_')}.pdf"),
+        bbox_inches='tight',
+        pad_inches=0.1
+    )
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+def aligner_improvement_vbarplot(
+    data: np.ndarray,
+    methods: list[str],
+    models: list[str],
+    title: str,
+    ylabel: str,
+    label_dict,
+    figh: float = 6,
+    show: bool = False
+):
+    """
+    data.shape == (n_models, n_methods)
+    draws one grouped vertical‐bar plot with X labels at the top and legend below the graph,
+    using two Blues (0.66, 0.33) and a '*' hatch on the lighter one.
+    """
+    # output folder
+    vbar_path = os.path.join("results/mcq_results/stats", "aligner_improv_vbarplot")
+    os.makedirs(vbar_path, exist_ok=True)
+
+    n_models = len(models)
+    n_meth   = len(methods)
+
+    # bar geometry
+    x = np.arange(n_models)
+    bar_w = 0.6 / n_meth
+
+    # colors & hatches
+    dark_blue  = cm.Blues(0.66)
+    light_blue = cm.Greens(0.4)
+    colors     = [dark_blue, light_blue]
+    hatch_map  = {methods[0]: '', methods[1]: ''}
+
+    color_map = dict(zip(methods, colors))
+
+    # ─── set up figure + GridSpec ─────────────────────────────────────────────
+    fig = plt.figure(constrained_layout=False, figsize=(6, figh))
+    gs  = fig.add_gridspec(2, 1,
+                           height_ratios=[0.9, 0.1],
+                           hspace=0.02)
+
+    # — bar plot row —
+    ax = fig.add_subplot(gs[0, 0])
+    for i, m in enumerate(methods):
+        x_pos = x + (i - (n_meth - 1) / 2) * bar_w
+        bar = ax.bar(
+            x_pos,
+            -data[:, i],
+            width=bar_w,
+            color=color_map[m],
+            hatch=hatch_map[m],
+            edgecolor='none',
+            alpha=0.75,
+        )
+        # Add text labels to the top of the bars
+        for j, b in enumerate(bar):
+            ax.text(
+                b.get_x() + b.get_width() / 2,
+                b.get_height()-0.5,
+                f"{data[j, i]:.1f}",
+                ha='center',
+                va='bottom',
+                fontsize=14,
+                color='black'
+            )
+
+    # X labels at the top
+    ax.xaxis.set_label_position('top')
+    ax.xaxis.tick_top()
+    ax.set_xticks(x)
+    if max([len(m) for m in models]) > 10:
+        ax.set_xticklabels(models, rotation=45, ha='left', fontsize=15)
+    else:
+        ax.set_xticklabels(models, fontsize=15)
+    ax.set_ylabel(ylabel, fontsize=15)
+
+    # Clean up spines and add horizontal grid lines
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.grid(which='both', axis='y', linestyle='--', alpha=0.3)
+
+    # — legend row —
+    ax_leg = fig.add_subplot(gs[1, 0])
+    ax_leg.axis('off')
+    handles = [
+        patches.Patch(color=color_map[m], label=label_dict[m]) for m in methods
+    ]
+    ax_leg.legend(handles=handles,
+                  loc='center',
+                  ncol=n_meth,
+                  frameon=False,
+                  fontsize=14)
+
+    # ─── save & optionally show ────────────────────────────────────────────────
+    plt.tight_layout(rect=[0, 0, 1, 1])
+    plt.savefig(
+        os.path.join(vbar_path, f"{title.replace(' ', '_')}.pdf"),
         bbox_inches='tight',
         pad_inches=0.1
     )
