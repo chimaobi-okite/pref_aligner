@@ -1,10 +1,7 @@
 import argparse
 
 from enums import PrefType, PromptMethod
-from evaluations.full_mcq_task import full_qa_task
 from evaluations.mcq_task_1 import full_pref_qa_task
-from evaluations.mcq_task_2 import full_qa_task
-# from evaluations.mcq_irr_task import full_pref_qa_task
 
 
 def main(model_path: str, pref_type: str, prompt_method: str, enable_thinking:int,
