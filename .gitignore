@@ -10,11 +10,11 @@ full_mcq_task_2.py
 **.DS_Store
 results/mcq_results/relevant/direct/mmlu/Mixtral-8x7B-Instruct-v0.1_0.8259680822609884_final.csv
 results/mcq_results/relevant/direct/mmlu/Mixtral-8x7B-Instruct-v0.1_0.8259680822609884_final.csv
-logs
-run_aligner.sh
-run_full_mcq.sh
-run_mcq.sh
-run_merge.sh
-run_prefeval.sh
+**/logs/
+run_aligner
+run_full_mcq
+run_mcq
+run_merge
+run_prefeval
 
 /Users/danielhou/Code/pref_aligner/results/mcq_results/relevant/cot/mmlu/Janus-7b.csv
