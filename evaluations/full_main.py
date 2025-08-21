@@ -19,7 +19,7 @@ def main(model_path: str, pref_type: str, prompt_method: str, enable_thinking:in
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Running Main Job")
-    parser.add_argument('--model_path', type=str, required=True, help="mcq_model_path")
+    parser.add_argument('--model_path', type=str, required=True, help="mcq_model_path from huggingface")
     parser.add_argument('--pref_type', type=str, choices=[e.value for e in PrefType], required=True, help="whether relevant or irrevant")
     parser.add_argument('--prompt_method', type=str, choices=[e.value for e in PromptMethod], required=True, help="whether icl, cot or direct")
     parser.add_argument('--enable_thinking', type=int, required=True, help="1 if thinking is enabled, else 0")
