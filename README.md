@@ -26,7 +26,7 @@ We say a model \(M\) is said to be *robust* iff:
 **(1)** It maintains factual accuracy while conditioning on the relevant pᵢ ∈ P for any given query x.  
 **(2)** It ignores irrelevant user features within the feature set P for any given query x.
 
-$$\text{Robust}(x,P,y)=\begin{cases}\text{Acc}(y)\land\text{Followed}(y,P)&\text{if}\;\text{PrefRel}(x,P)=1\\\\text{Acc}(y)&\text{if}\;\text{PrefRel}(x,P)=0\;\text{or}\;P=\emptyset\end{cases}$$
+$$\text{Robust}(x,P,y)=\begin{cases}\text{Acc}(y)\land\text{Followed}(y,P)&\text{if}\;\text{PrefRel}(x,P)=1\\ \text{Acc}(y)&\text{if}\;\text{PrefRel}(x,P)=0\;\text{or}\;P=\emptyset\end{cases}$$
 
 <!-- ![equation](https://latex.codecogs.com/png.latex?\text{Robust}(x,P,y)=\begin{cases}\text{Acc}(y)\land\text{Followed}(y,P)&\text{if}\;\text{PrefRel}(x,P)=1\\\text{Acc}(y)&\text{if}\;\text{PrefRel}(x,P)=0\;\text{or}\;P=\emptyset\end{cases}) -->
 
@@ -63,12 +63,10 @@ $$\text{Alignment Failure} = 1 - \mathbb{E}_{x \in Q^*}[\text{Followed}(y, P)].$
 Robustness Error is the union of breakage and alignment failure sets and measures how often the model either fails to answer it correctly or aligns with user preference. Formally:
 
 $$
-\begin{align*}
-\text{Robustness Error} &= 1 - \mathbb{E}_{x \in Q^*} \left[
+\text{Robustness Error} = 1 - \mathbb{E}_{x \in Q^*} \left[
 \text{Acc}_{\text{pref}}(y) \ \cap\ \text{Followed}(y, P)
 \right] \\
-&= 1 - \mathbb{E}_{x \in Q^*} \left[\text{Robust}(x, P, y)\right]
-\end{align*}
+= 1 - \mathbb{E}_{x \in Q^*} \left[\text{Robust}(x, P, y)\right]
 $$
 
 **Performance Variation**
