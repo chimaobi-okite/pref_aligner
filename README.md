@@ -26,7 +26,7 @@ We say a model \(M\) is said to be *robust* iff:
 **(1)** It maintains factual accuracy while conditioning on the relevant pᵢ ∈ P for any given query x.  
 **(2)** It ignores irrelevant user features within the feature set P for any given query x.
 
-$$\text{Robust}(x,P,y)=\begin{cases}\text{Acc}(y)\land\text{Followed}(y,P)&\text{if}\;\text{PrefRel}(x,P)=1\\\text{Acc}(y)&\text{if}\;\text{PrefRel}(x,P)=0\;\text{or}\;P=\emptyset\end{cases}$$
+$$\text{Robust}(x,P,y)=\begin{cases}\text{Acc}(y)\land\text{Followed}(y,P)&\text{if}\;\text{PrefRel}(x,P)=1\\\\text{Acc}(y)&\text{if}\;\text{PrefRel}(x,P)=0\;\text{or}\;P=\emptyset\end{cases}$$
 
 <!-- ![equation](https://latex.codecogs.com/png.latex?\text{Robust}(x,P,y)=\begin{cases}\text{Acc}(y)\land\text{Followed}(y,P)&\text{if}\;\text{PrefRel}(x,P)=1\\\text{Acc}(y)&\text{if}\;\text{PrefRel}(x,P)=0\;\text{or}\;P=\emptyset\end{cases}) -->
 
@@ -47,9 +47,8 @@ We introduce four complementary error-based metrics. Lower values (closer to zer
 Measures how often personalization causes the model to fail on inputs that it handles correctly without any preference conditioning.
 
 Formally,
-$$
-\text{Breakage Rate} = 1 - \mathbb{E}_{x \in Q^*}[\text{Acc}_{\text{pref}}(y)],
-$$
+
+$$\text{Breakage Rate} = 1 - \mathbb{E}_{x \in Q^*}[\text{Acc}_{\text{pref}}(y)]$$
 <!-- Given $Q$ is all query set in our dataset $D$, then $Q^* = \{x \in Q \mid \text{Acc}_{\text{no-pref}}(y) = 1\}$, $\text{Acc}_{\text{pref}}(y)$ and $\text{Acc}_{\text{no-pref}}(y)$ are the accuracy of generating $y$ with and without any preference, respectively. -->
 
 **Alignment Failure**
