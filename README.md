@@ -62,14 +62,12 @@ $$\text{Alignment Failure} = 1 - \mathbb{E}_{x \in Q^*}[\text{Followed}(y, P)].$
 
 Is the union of breakage and alignment failure sets and measures how often the model either fails to answer it correctly or aligns with user preference. Formally,
 
-$$
-\begin{align*}
+$$\begin{align*}
 \text{Robustness Error} &= 1 - \mathbb{E}_{x \in Q^*} \left[
 \text{Acc}_{\text{pref}}(y) \ \cap\ \text{Followed}(y, P)
 \right] \\
 &= 1 - \mathbb{E}_{x \in Q^*} \left[\text{Robust}(x, P, y)\right]
-\end{align*}
-$$
+\end{align*}$$
 
 **Performance Variation**
 
