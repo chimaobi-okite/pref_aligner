@@ -83,19 +83,27 @@ Some of the key research questions and results are summarized below:
 
 **Q: Are LLMs robust when we include a relevant user preference?**
 
-**Answer: No.** We evaluate several models across the metrics listed above and we find that most models suffer some form of degradation in robustness. Models exhibit varying levels of breakage and alignment failures, that can lead to a combined robustness as bad as upto 34% in some of the less robust models, and even as high as 9% in some of the more robust models. 
+![AFR_BR_Scatter_plot](https://github.com/chimaobi-okite/pref_aligner/blob/main/paper_images/AFR_BR_Scatter_plot.png?raw=true)
+
+**Answer: No.** Models exhibit varying levels of breakage and alignment failures, that can lead to a combined robustness as bad as upto 34% in some of the less robust models, and even as high as 9% in some of the more robust models. 
 
 **Q: How robust are LLMs when both relevant and irrelevant preferences are present?**
 
-**Answer: Irrelevant preferences amplify robustness errors.** Here, we evaluate LLM Robustness on a preference list (like in real world) with an irrelevant preference setting and mixed (relevant and irrelevant) preference setting. Our results show that the presence of irrelevant preferences amplifies alignment errors (ie, LLMs struggle to delineate between the relevant and irrelevant preferences within the preference list). This is evident in the substantial increase in alignment failure, leading to an increase in robustness error across all models when compared to the single relevant preference setting.
+![llama_pref_setting](https://github.com/chimaobi-okite/pref_aligner/blob/main/paper_images/llama_pref_setting.png?raw=true)
+
+**Answer: Irrelevant preferences amplify robustness errors.** 
 
 **Q: What types of failure patterns do models exhibit?**
 
-**Answer:  Question and preference categories significantly influence robustness.** For questions drawn from TruthfulQA, which are often short and straightforward, preferences eliciting clarity and conciseness have the least breakage rate, and preferences that require contextual details or practical examples have a higher breakage rate. We conjecture that this is because context/thinking related preferences make models overthink, which leads to incorrect answers. For MMLU, we do not observe any consistent pattern, likely due to its coverage of diverse academic domains. This highlights the complexities and comprehensive scenarios covered in PERG.
+![failure causes](https://github.com/chimaobi-okite/pref_aligner/blob/main/paper_images/failure_causes.png?raw=true)
+
+**Answer:  Question and preference categories significantly influence robustness.**
 
 ## Improving Robustness: Pref-Aligner
 
 We introduce Pref-Aligner, a two-stage agentic framework, which decouples generation from personalization with an agent specialized for each task. In the first stage, a generation agent responds to user queries without considering their defined preferences (if any). In the second stage, the aligner agent takes the unconditioned response from the generation agent, the user preference(s), and produces an aligned response (if needed). That way, we eliminate the inconsistencies resulting from preference signals during initial generation. 
+
+![pref_aligner](https://github.com/chimaobi-okite/pref_aligner/blob/main/paper_images/pref_aligner.png?raw=true)
 
 Results show that our framework consistently improves robustness across the representative models we evaluated -   Llama3-8B, Llama3-70B, Mistral-8x7b, and Gemma-9B models. 
 Notably, the breakage rate for *Llama-70B* drops from 5.6% to 1.3% in relevant preference settings and remain consistent even in mixed and irrelevant preference settings, highlighting the effectiveness of our proposed framework in diverse conditions.
@@ -123,5 +131,6 @@ Notably, the breakage rate for *Llama-70B* drops from 5.6% to 1.3% in relevant p
 *Table: Breakage Rate: Pref-Aligner Results compared to Zero-Shot for Llama-70B in three preference relevance settings. Pref-Aligner shows significant performance improvement over naive across all settings. Also, this performance remains consistent irrespective of preference setting.*
 
 ## Conclusion
-
-
+Current LLMs are not fully robust: preference signals can be 
+* ignored (misalignment) Or 
+* degrade factual reliability (breakage)
